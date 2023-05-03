@@ -1,0 +1,356 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using System.Security.Cryptography.X509Certificates
+@using AslHMS.Models
+@model AslHMS.Models.PageModel
+@{
+    ViewBag.Title = "Get_Closing_Stock_Summary";
+    Layout = null;
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    AslHMSApiContext db = new AslHMSApiContext();
+    var companyId = Convert.ToInt64(Model.Hms_Pharmacy.COMPID);
+
+    string companyName = "", address = "", contactNo = "", address2 = "";
+    var re = from m in db.AslCompanyDbSet where m.COMPID == companyId select new { m.COMPNM, m.ADDRESS, m.CONTACTNO };
+    foreach (var n in re)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        contactNo = n.CONTACTNO;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+
+    DateTime fdate = Convert.ToDateTime(Model.Report_FromDate);
+    string ddt = fdate.ToString("dd-MMM-yyyy");
+    string selectDate = fdate.ToString("yyyy-MM-dd");
+    var fromdate = ddt;
+
+    var deptid = Convert.ToInt64(Model.DEPTID);
+    string DepartmentName = "";
+    var store_Name = (from n in db.HMS_DEPT where n.COMPID == companyId && n.DEPTID == deptid && n.DEPTTP == "PHARMACY" select new { n.DEPTNM }).ToList();
+    foreach (var n in store_Name)
+    {
+        DepartmentName = n.DEPTNM;
+    }
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+
+</head>
+<body style=" background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="10%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+
+                </tr>
+                <tr style="background-color: #00689b">
+                    <td colspan="12">
+                        <h3 style="color: white;padding:4px">@compNm</h3>
+                        <p style="color:white;padding-left:4px">@Address<br /> @address2</p>
+                    </td>
+
+                    <td colspan="6" style="color: white;padding:8px" align="right">
+                        Powered By<br />Alchemy Software
+                    </td>
+
+                </tr>
+                <tr>
+                    <td colspan="12" align="left" style="padding: 4px; font-weight: bold">Closing Stock Summary</td>
+                    <td align="right" colspan="6" style="padding:8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="18" style="padding: 4px; font-weight: bold"> Department Name : <span style="font-weight:bold">@DepartmentName</span></td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="18" style="padding:4px;font-weight:bold">Date : <span style="font-weight: bold">@fromdate</span></td>
+                </tr>
+
+                <tr style="background-color: #00689b; outline: thin solid">
+                    <td colspan="8" style="color: white; padding: 4px" align="center">Item Particulars</td>
+                    <td colspan="3" style="color: white; padding: 4px" align="center">Quantity</td>
+                    <td colspan="3" style="color: white; padding: 4px" align="center">Rate</td>
+                    <td colspan="4" style="color: white; padding: 4px" align="center">Amount</td>
+
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    Decimal total_BQTY = 0, total_SQTY = 0, total_INQTY = 0, total_OUTQTY = 0, total_Balance = 0;
+                }
+                @{
+
+                    System.Data.SqlClient.SqlConnection conn1 = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["AslHMSApiContext"].ToString());
+                    string query1 = string.Format(
+                        @"SELECT Distinct MCATNM
+FROM(
+SELECT MCATNM, A.MEDIID, MEDINM, SUM(ISNULL(QTYB,0)) QTYB, SUM(ISNULL(QTYBR,0)) QTYBR, SUM(ISNULL(QTYS,0)) QTYS, SUM(ISNULL(QTYSR,0)) QTYSR,
+SUM(ISNULL(QTYU,0)) QTYU, SUM(ISNULL(QTYR,0)) QTYR, SUM(ISNULL(QTYI,0)) QTYI,
+(SUM(ISNULL(QTYB,0))+SUM(ISNULL(QTYSR,0))+SUM(ISNULL(QTYR,0))-SUM(ISNULL(QTYBR,0))-SUM(ISNULL(QTYS,0))-SUM(ISNULL(QTYU,0))-SUM(ISNULL(QTYI,0))) QTYCL,
+SUM(ISNULL(QTYBT,0)) QTYBT, SUM(ISNULL(AMTBT,0)) AMTBT, (SUM(ISNULL(AMTBT,0))/SUM(ISNULL(QTYBT,0))) RATEBT
+FROM(
+SELECT MEDIID, SUM(ISNULL(QTY,0)) QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'BUY'  AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, SUM(ISNULL(QTY,0)) QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IRTB' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, SUM(ISNULL(QTY,0)) QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'SALE' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, SUM(ISNULL(QTY,0)) QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IRTS' AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, SUM(ISNULL(QTY,0)) QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IUSE' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, SUM(ISNULL(QTY,0)) QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IISS' AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, SUM(ISNULL(QTY,0)) QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IISS' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, SUM(ISNULL(QTY,0)) QTYBT, SUM(ISNULL(AMOUNT,0)) AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP IN ('BUY','IISS') AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID HAVING SUM(ISNULL(QTY,0)) <> 0
+) A
+INNER JOIN HMS_MEDIMST  B ON SUBSTRING(CONVERT(NVARCHAR(10),A.MEDIID),1,5) = MCATID AND B.COMPID = '{0}'
+INNER JOIN HMS_MEDICARE C ON A.MEDIID = C.MEDIID AND C.COMPID = '{0}'
+GROUP BY MCATNM, A.MEDIID, MEDINM
+HAVING (SUM(ISNULL(QTYB,0))+SUM(ISNULL(QTYSR,0))+SUM(ISNULL(QTYR,0))-SUM(ISNULL(QTYBR,0))-SUM(ISNULL(QTYS,0))-SUM(ISNULL(QTYU,0))-SUM(ISNULL(QTYI,0))) <> 0
+) E ORDER BY MCATNM", companyId, deptid, selectDate);
+                    System.Data.SqlClient.SqlCommand cmd1 = new System.Data.SqlClient.SqlCommand(query1, conn1);
+                    conn1.Open();
+                    SqlDataAdapter da1 = new SqlDataAdapter(cmd1);
+                    DataTable ds1 = new DataTable();
+                    da1.Fill(ds1);
+                    string CategoryName = "";
+                    Decimal GrandTotal = 0;
+                    foreach (DataRow parentRow in ds1.Rows)
+                    {
+                        CategoryName = parentRow["MCATNM"].ToString();
+
+                        System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["AslHMSApiContext"].ToString());
+                        string query = string.Format(
+                            @"SELECT MCATNM, MEDINM, QTYB, QTYBR, QTYS, QTYSR, QTYU, QTYR, QTYI, QTYCL, RATEBT, (CASE WHEN QTYCL > 0 THEN (QTYCL*RATEBT) ELSE 0 END) AMTCL
+FROM(
+SELECT MCATNM, A.MEDIID, MEDINM, SUM(ISNULL(QTYB,0)) QTYB, SUM(ISNULL(QTYBR,0)) QTYBR, SUM(ISNULL(QTYS,0)) QTYS, SUM(ISNULL(QTYSR,0)) QTYSR,
+SUM(ISNULL(QTYU,0)) QTYU, SUM(ISNULL(QTYR,0)) QTYR, SUM(ISNULL(QTYI,0)) QTYI,
+(SUM(ISNULL(QTYB,0))+SUM(ISNULL(QTYSR,0))+SUM(ISNULL(QTYR,0))-SUM(ISNULL(QTYBR,0))-SUM(ISNULL(QTYS,0))-SUM(ISNULL(QTYU,0))-SUM(ISNULL(QTYI,0))) QTYCL,
+SUM(ISNULL(QTYBT,0)) QTYBT, SUM(ISNULL(AMTBT,0)) AMTBT, (SUM(ISNULL(AMTBT,0))/SUM(ISNULL(QTYBT,0))) RATEBT
+FROM(
+SELECT MEDIID, SUM(ISNULL(QTY,0)) QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'BUY'  AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, SUM(ISNULL(QTY,0)) QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IRTB' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, SUM(ISNULL(QTY,0)) QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'SALE' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, SUM(ISNULL(QTY,0)) QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IRTS' AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, SUM(ISNULL(QTY,0)) QTYU, 0 QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IUSE' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, SUM(ISNULL(QTY,0)) QTYR, 0 QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IISS' AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, SUM(ISNULL(QTY,0)) QTYI, 0 QTYBT, 0 AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP = 'IISS' AND TRANSDT <= '{2}' AND DEPTFR = '{1}' GROUP BY MEDIID
+UNION
+SELECT MEDIID, 0 QTYB, 0 QTYBR, 0 QTYS, 0 QTYSR, 0 QTYU, 0 QTYR, 0 QTYI, SUM(ISNULL(QTY,0)) QTYBT, SUM(ISNULL(AMOUNT,0)) AMTBT
+FROM HMS_PHARMACY
+WHERE COMPID = '{0}' AND TRANSTP IN ('BUY','IISS') AND TRANSDT <= '{2}' AND DEPTTO = '{1}' GROUP BY MEDIID HAVING SUM(ISNULL(QTY,0)) <> 0
+) A
+INNER JOIN HMS_MEDIMST  B ON SUBSTRING(CONVERT(NVARCHAR(10),A.MEDIID),1,5) = MCATID AND B.COMPID = '{0}'
+INNER JOIN HMS_MEDICARE C ON A.MEDIID = C.MEDIID AND C.COMPID = '{0}'
+GROUP BY MCATNM, A.MEDIID, MEDINM
+HAVING (SUM(ISNULL(QTYB,0))+SUM(ISNULL(QTYSR,0))+SUM(ISNULL(QTYR,0))-SUM(ISNULL(QTYBR,0))-SUM(ISNULL(QTYS,0))-SUM(ISNULL(QTYU,0))-SUM(ISNULL(QTYI,0))) <> 0
+) E ORDER BY MCATNM, MEDINM",
+                            companyId, deptid, selectDate);
+                        System.Data.SqlClient.SqlCommand cmd = new System.Data.SqlClient.SqlCommand(query, conn);
+                        conn.Open();
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable ds = new DataTable();
+                        da.Fill(ds);
+
+                        string medinm = "";
+                        Decimal qtycl = 0, ratebt = 0, amtcl = 0, totalAmount = 0;
+
+                        string MCATNM = "";
+                        foreach (DataRow row in ds.Rows)
+                        {
+
+                            MCATNM = row["MCATNM"].ToString();
+                            if (CategoryName == MCATNM)
+                            {
+                                <tr>
+                                    <td><br /></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" align="left" style="font-weight:bold;padding-left: 4px;">
+                                        Category:
+                                    </td>
+                                    <td colspan="16" align="left" style="font-weight:bold">
+                                        @CategoryName
+                                    </td>
+                                </tr>
+                                break;
+                            }
+
+                        }
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+                            MCATNM = row["MCATNM"].ToString();
+                            if (CategoryName == MCATNM)
+                            {
+                                medinm = row["MEDINM"].ToString();
+                                qtycl = Convert.ToDecimal(row["QTYCL"]);
+                                ratebt = Convert.ToDecimal(string.Format("{0:0.00}", row["RATEBT"]));
+                                amtcl = Convert.ToDecimal(string.Format("{0:0.00}", row["AMTCL"]));
+
+                                <tr style="outline: thin solid #807575">
+                                    <td align="left" colspan="8" style="padding-left: 4px">
+                                        @medinm
+                                    </td>
+                                    <td align="center" colspan="3">
+                                        @qtycl
+                                    </td>
+                                    <td align="right" colspan="3">
+                                        @ratebt
+                                    </td>
+                                    <td align="right" colspan="4">
+                                        @amtcl
+                                    </td>
+                                </tr>
+                                totalAmount += amtcl;
+                                GrandTotal += totalAmount;
+                            }
+
+                        }
+
+                        <tr>
+                            <td align="right" colspan="14" style="padding-left: 4px">
+                                Category Wise Total:
+                            </td>
+                            <td align="right" colspan="4" style="font-weight: bold">
+                                @totalAmount
+                            </td>
+                        </tr>
+
+                        conn.Close();
+                    }
+                    conn1.Close();
+
+
+                }
+
+                <tr>
+                    <td><br /></td>
+                </tr>
+                <tr style="outline: thin solid #807575">
+                    <td align="right" colspan="14" style="padding-left: 4px">
+                        Grand Total:
+                    </td>
+                    <td align="right" colspan="4" style="font-weight: bold">
+                        @GrandTotal
+                    </td>
+                </tr>
+            @*<tr>
+                        <td colspan="2"></td>
+                        <td colspan="2"></td>
+                        <td colspan="1"></td>
+                        <td align="right" colspan="3" style="font-weight:bold">
+                            Total:
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_BQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_SQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_INQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_OUTQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @{
+                                total_Balance = Opening + total_BQTY - total_SQTY + total_INQTY - total_OUTQTY;
+                            }
+                            @total_Balance
+                        </td>
+                    </tr>*@
+
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

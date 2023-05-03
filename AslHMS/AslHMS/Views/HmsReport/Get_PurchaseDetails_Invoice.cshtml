@@ -1,0 +1,316 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using System.Security.Cryptography.X509Certificates
+@using AslHMS.Models
+@model AslHMS.Models.PageModel
+@{
+    ViewBag.Title = "Get_PurchaseDetails_Invoice";
+    Layout = null;
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    AslHMSApiContext db = new AslHMSApiContext();
+    var companyId = Convert.ToInt64(Model.Hms_PharmacyMst.COMPID);
+
+    string companyName = "", address = "", contactNo = "", address2 = "";
+    var re = from m in db.AslCompanyDbSet where m.COMPID == companyId select new { m.COMPNM, m.ADDRESS, m.CONTACTNO };
+    foreach (var n in re)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        contactNo = n.CONTACTNO;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+
+    DateTime fdate = Convert.ToDateTime(Model.Report_FromDate);
+    string ddt = fdate.ToString("dd-MMM-yyyy");
+    var fromdate = ddt;
+
+    DateTime tDate = Convert.ToDateTime(Model.Report_ToDate);
+    string tdd = tDate.ToString("dd-MMM-yyyy");
+    var todate = tdd;
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+
+</head>
+<body style=" background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="10%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+
+                </tr>
+                <tr style="background-color: #00689b">
+                    <td colspan="12">
+                        <h3 style="color: white;padding:4px">@compNm</h3>
+                        <p style="color:white;padding-left:4px">@Address<br /> @address2</p>
+                    </td>
+                    <td colspan="6" style="color: white;padding:8px" align="right">
+                        Powered By<br />Alchemy Software
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="12" align="left" style="padding: 4px; font-weight: bold">Purchase Details - Memo Wise</td>
+                    <td align="right" colspan="6" style="padding:8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="9" style="padding:4px;font-weight:bold">From Date : <span style="font-weight: bold">@fromdate</span></td>
+                    <td colspan="9" style="font-weight: bold"> To Date : <span style="font-weight:bold">@todate</span></td>
+                </tr>
+
+                <tr style="background-color: #00689b; outline: thin solid">
+                    <td colspan="8" style="color: white; padding: 4px" align="center">Item Particulars</td>
+                    <td colspan="3" style="color: white; padding: 4px" align="center">Quantity</td>
+                    <td colspan="3" style="color: white; padding: 4px" align="center">Rate</td>
+                    <td colspan="4" style="color: white; padding: 4px" align="center">Amount</td>
+
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    Decimal total_BQTY = 0, total_SQTY = 0, total_INQTY = 0, total_OUTQTY = 0, total_Balance = 0;
+                }
+                @{
+
+                    System.Data.SqlClient.SqlConnection conn1 = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["AslHMSApiContext"].ToString());
+                    string query1 = string.Format(
+                        @"SELECT Distinct C.SUPPLIERID, ACCOUNTNM,  C.TRANSDT, C.TRANSNO
+FROM(
+SELECT A.COMPID,SUPPLIERID, TRANSDT, TRANSNO, A.MEDIID, MEDINM, SUM(ISNULL(QTY,0)) QTY, SUM(ISNULL(AMOUNT,0))/SUM(ISNULL(QTY,0)) RATE, SUM(ISNULL(AMOUNT,0)) AMOUNT
+FROM HMS_PHARMACY A INNER JOIN HMS_MEDICARE B ON A.COMPID = B.COMPID AND A.MEDIID = B.MEDIID
+WHERE A.COMPID = '{0}' AND TRANSTP = 'BUY' AND TRANSDT BETWEEN '{1}' AND '{2}'
+GROUP BY A.COMPID, SUPPLIERID, TRANSDT, TRANSNO, A.MEDIID, MEDINM
+HAVING SUM(ISNULL(QTY,0)) <> 0
+) C INNER JOIN GL_ACCHART B ON C.COMPID = B.COMPID AND C.SUPPLIERID = B.ACCOUNTCD
+INNER JOIN HMS_PHARMMST D ON C.COMPID = D.COMPID AND C.SUPPLIERID = D.SUPPLIERID
+AND D.COMPID = '{0}' AND D.TRANSTP = 'BUY' AND C.TRANSDT = D.TRANSDT AND C.TRANSNO = D.TRANSNO
+GROUP BY C.SUPPLIERID, ACCOUNTNM, C.TRANSDT, C.TRANSNO", companyId, fdate, todate);
+                    System.Data.SqlClient.SqlCommand cmd1 = new System.Data.SqlClient.SqlCommand(query1, conn1);
+                    conn1.Open();
+                    SqlDataAdapter da1 = new SqlDataAdapter(cmd1);
+                    DataTable ds1 = new DataTable();
+                    da1.Fill(ds1);
+
+                    string supllierName_Parents = "", transDate_Parents = "", memoNO_Parents = "", supplierId_Parents = "";
+                    Decimal grandTotalNetAmount = 0;
+
+                    foreach (DataRow parentRow in ds1.Rows)
+                    {
+                        supplierId_Parents = parentRow["SUPPLIERID"].ToString();
+                        supllierName_Parents = parentRow["ACCOUNTNM"].ToString();
+                        memoNO_Parents = parentRow["TRANSNO"].ToString();
+                        transDate_Parents = parentRow["TRANSDT"].ToString();
+
+                        System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["AslHMSApiContext"].ToString());
+                        string query = string.Format(
+                            @"SELECT C.SUPPLIERID, ACCOUNTNM, C.TRANSDT, C.TRANSNO, MEDIID, MEDINM, QTY, RATE, AMOUNT,
+SUM(ISNULL(TOTAMT,0)) TOTAMT, SUM(ISNULL(VATAMT,0)) VATAMT, SUM(ISNULL(DISCOUNT,0)) DISCOUNT, SUM(ISNULL(NETAMT,0)) NETAMT
+FROM(
+SELECT A.COMPID,SUPPLIERID, TRANSDT, TRANSNO, A.MEDIID, MEDINM, SUM(ISNULL(QTY,0)) QTY, SUM(ISNULL(AMOUNT,0))/SUM(ISNULL(QTY,0)) RATE, SUM(ISNULL(AMOUNT,0)) AMOUNT
+FROM HMS_PHARMACY A INNER JOIN HMS_MEDICARE B ON A.COMPID = B.COMPID AND A.MEDIID = B.MEDIID
+WHERE A.COMPID = '{0}' AND TRANSTP = 'BUY' AND TRANSDT BETWEEN '{1}' AND '{2}'
+GROUP BY A.COMPID, SUPPLIERID, TRANSDT, TRANSNO, A.MEDIID, MEDINM
+HAVING SUM(ISNULL(QTY,0)) <> 0
+) C INNER JOIN GL_ACCHART B ON C.COMPID = B.COMPID AND C.SUPPLIERID = B.ACCOUNTCD
+INNER JOIN HMS_PHARMMST D ON C.COMPID = D.COMPID AND C.SUPPLIERID = D.SUPPLIERID
+AND D.COMPID = '{0}' AND D.TRANSTP = 'BUY' AND C.TRANSDT = D.TRANSDT AND C.TRANSNO = D.TRANSNO
+GROUP BY C.SUPPLIERID, ACCOUNTNM, C.TRANSDT, C.TRANSNO, MEDIID, MEDINM, QTY, RATE, AMOUNT",
+                            companyId, fdate, todate);
+                        System.Data.SqlClient.SqlCommand cmd = new System.Data.SqlClient.SqlCommand(query, conn);
+                        conn.Open();
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable ds = new DataTable();
+                        da.Fill(ds);
+
+                        string SUPPLIERID = "", TRANSNO = "", TRANSDT = "";
+
+                        string mediName = "";
+                        Decimal qty = 0, rate = 0, amount = 0, memoWiseTotal = 0;
+                        Decimal memoWise_TOTAMT = 0, memoWise_VATAMT = 0, memoWise_DISCOUNT = 0, memoWise_NETAMT = 0;
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+
+                            SUPPLIERID = row["SUPPLIERID"].ToString();
+                            TRANSNO = row["TRANSNO"].ToString();
+                            TRANSDT = row["TRANSDT"].ToString();
+
+                            if (supplierId_Parents == SUPPLIERID && memoNO_Parents == TRANSNO && transDate_Parents == TRANSDT)
+                            {
+
+                                DateTime date = Convert.ToDateTime(TRANSDT);
+                                string transdt_convertDate = date.ToString("dd-MMM-yyyy");
+                                <tr>
+                                    <td><br /></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" align="left" style="font-weight: bold; padding-left: 4px;">
+                                        Date:
+                                    </td>
+                                    <td colspan="3" align="left" style="font-weight: bold">
+                                        @transdt_convertDate
+                                    </td>
+                                    <td colspan="3" align="right" style="font-weight: bold">
+                                        Memo No:
+                                    </td>
+                                    <td colspan="3" align="left" style="font-weight: bold">
+                                        @TRANSNO
+                                    </td>
+                                    <td colspan="2" align="right" style="font-weight: bold">
+                                        Supplier:
+                                    </td>
+                                    <td colspan="5" align="left" style="font-weight: bold">
+                                        @supllierName_Parents
+                                    </td>
+                                </tr>
+
+
+                                memoWise_TOTAMT = Convert.ToDecimal(string.Format("{0:0.00}", row["TOTAMT"]));
+                                memoWise_VATAMT = Convert.ToDecimal(string.Format("{0:0.00}", row["VATAMT"]));
+                                memoWise_DISCOUNT = Convert.ToDecimal(string.Format("{0:0.00}", row["DISCOUNT"]));
+                                memoWise_NETAMT = Convert.ToDecimal(string.Format("{0:0.00}", row["NETAMT"]));
+                                break;
+                            }
+
+                        }
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+                            SUPPLIERID = row["SUPPLIERID"].ToString();
+                            TRANSNO = row["TRANSNO"].ToString();
+                            TRANSDT = row["TRANSDT"].ToString();
+                            if (supplierId_Parents == SUPPLIERID && memoNO_Parents == TRANSNO && transDate_Parents == TRANSDT)
+                            {
+                                mediName = row["MEDINM"].ToString();
+                                qty = Convert.ToDecimal(string.Format("{0:0.00}", row["QTY"]));
+                                rate = Convert.ToDecimal(string.Format("{0:0.00}", row["RATE"]));
+                                amount = Convert.ToDecimal(string.Format("{0:0.00}", row["AMOUNT"]));
+
+                                <tr style="outline: thin solid #807575">
+                                    <td align="left" colspan="8" style="padding-left: 4px">
+                                        @mediName
+                                    </td>
+                                    <td align="center" colspan="3">
+                                        @qty
+                                    </td>
+                                    <td align="right" colspan="3">
+                                        @rate
+                                    </td>
+                                    <td align="right" colspan="4">
+                                        @amount
+                                    </td>
+                                </tr>
+                                memoWiseTotal += amount;
+                            }
+                        }
+
+                        <tr>
+                            <td align="right" colspan="14" style="padding-left: 4px">
+                                Memo Wise Total:
+                            </td>
+                            <td align="right" colspan="4">
+                                @memoWiseTotal
+                            </td>
+                        </tr>
+
+
+                        <tr style="outline: thin solid Black">
+                            <td align="left" colspan="2" style="padding-left: 4px">
+                                Total Amount:
+                            </td>
+                            <td align="left" colspan="2">
+                                @memoWise_TOTAMT
+                            </td>
+                            <td align="right" colspan="2" >
+                                Vat:
+                            </td>
+                            <td align="left" colspan="2" >
+                                @memoWise_VATAMT
+                            </td>
+                            <td align="right" colspan="2" >
+                                Discount:
+                            </td>
+                            <td align="left" colspan="2" >
+                                @memoWise_DISCOUNT
+                            </td>
+                            <td align="right" colspan="2" style="font-weight: bold">
+                                Net Amount:
+                            </td>
+                            <td align="right" colspan="4" style="font-weight: bold">
+                                @memoWise_NETAMT
+                            </td>
+                        </tr>
+
+                        grandTotalNetAmount += memoWise_NETAMT;
+                        conn.Close();
+                    }
+                    conn1.Close();
+
+
+                }
+
+                <tr>
+                    <td><br /></td>
+                </tr>
+                <tr >
+                    <td align="right" colspan="14" style="padding-left: 4px">
+                        Grand Total:
+                    </td>
+                    <td align="right" colspan="4" style="font-weight: bold; outline: thin solid">
+                        @grandTotalNetAmount
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
+

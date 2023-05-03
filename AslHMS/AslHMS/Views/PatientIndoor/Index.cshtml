@@ -1,0 +1,677 @@
+﻿@using AslHMS.Models
+@model AslHMS.Models.DTO.PatientIndoorDTO
+
+
+@{
+    ViewBag.Title = "Index";
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+    var LoggedUserId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedUserID"]);
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "AslSuperadmin") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+    var LoggedCompId = HttpContext.Current.Session["loggedCompID"].ToString();
+    Int64 compid = Convert.ToInt64(LoggedCompId);
+
+    AslHMSApiContext db = new AslHMSApiContext();
+
+    List<SelectListItem> listgender = new List<SelectListItem>();
+
+
+    listgender.Add(new SelectListItem { Text = "MALE", Value = "MALE" });
+    listgender.Add(new SelectListItem { Text = "FEMALE", Value = "FEMALE" });
+
+    List<SelectListItem> maritalstatus = new List<SelectListItem>();
+    maritalstatus.Add(new SelectListItem { Text = "MARRIED", Value = "MARRIED" });
+    maritalstatus.Add(new SelectListItem { Text = "SINGLE", Value = "SINGLE" });
+
+    List<SelectListItem> religion = new List<SelectListItem>();
+    religion.Add(new SelectListItem { Text = "ISLAM", Value = "ISLAM" });
+    religion.Add(new SelectListItem { Text = "HINDUISM", Value = "HINDUISM" });
+    religion.Add(new SelectListItem { Text = "BUDDHISM", Value = "BUDDHISM" });
+    religion.Add(new SelectListItem { Text = "CHRISTIANITY", Value = "CHRISTIANITY" });
+   
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+    //var findmaxPatientid = (from n in db.HMS_IpdDbSet where n.COMPID == compid select n.PATIENTID).Max();
+    string findmaxPatientid = "0";
+    var findmaxrowidlist = (from n in db.HMS_IpdDbSet where n.COMPID == compid select n.ID).ToList();
+    Int64 findmaxrowid = 0;
+    if (findmaxrowidlist.Count() == 0)
+    {
+
+    }
+    else
+    {
+        findmaxrowid = (from n in db.HMS_IpdDbSet where n.COMPID == compid select n.ID).Max();
+    }
+    
+    var selectlastpatientid = (from n in db.HMS_IpdDbSet where n.COMPID == compid && n.ID == findmaxrowid select n).ToList();
+    foreach (var x in selectlastpatientid)
+    {
+        findmaxPatientid = x.PATIENTID;
+    }
+    string converttoString = Convert.ToString(currentDateTime.ToString("ddMMyy"));
+    
+                         
+    string patientid = "";
+    if (findmaxPatientid == "0")
+    {
+        patientid = (Convert.ToString(converttoString) + "-001");
+    }
+    else
+    {
+        if (findmaxPatientid.Substring(0, 6) == converttoString)
+        {
+            Int64 abc = Convert.ToInt64(findmaxPatientid.Substring(7,3))+1;
+            string xxx = Convert.ToString(abc);
+            if (xxx.Length == 1)
+            {
+                patientid = findmaxPatientid.Substring(0, 7) + "00" + xxx;
+            }
+            else if (xxx.Length == 2)
+            {
+                patientid = findmaxPatientid.Substring(0, 7) + "0" + xxx;
+            }
+            else if (xxx.Length == 3)
+            {
+                patientid = findmaxPatientid.Substring(0, 7) + xxx;
+            }
+            //patientid = Convert.ToString(Convert.ToInt64(findmaxPatientid) + 1);
+        }
+        else
+        {
+            patientid = (Convert.ToString(converttoString) + "-001");
+        }
+      
+    }
+
+    Int64 findmaxPatientyearid =Convert.ToInt64((from n in db.HMS_IpdDbSet where n.COMPID == compid select n.PATIENTYYID).Max());
+    Int64 patientyear = 0;
+    if (findmaxPatientyearid == 0)
+    {
+        patientyear = Convert.ToInt64(converttoString.Substring(4, 2) + "100001");
+    }
+    else
+    {
+        if (findmaxPatientyearid.ToString().Substring(0, 2) == converttoString.Substring(4, 2))
+        {
+            patientyear = findmaxPatientyearid + 1;
+        }
+        else
+        {
+            patientyear = Convert.ToInt64(converttoString.Substring(4, 2) + "100001");
+        }
+    }
+    
+    
+}
+
+<link href="~/Content/newcss/jquery-ui.css" rel="stylesheet" />
+
+
+<link href="~/Content/newcss/ng-grid.css" rel="stylesheet" />
+<link rel="stylesheet" href="~/Content/style.css" />
+
+
+
+
+
+
+
+
+
+<script src="~/Content/jquery1.8.0/jquery.min.js"></script>
+
+
+<script src="~/Content/jquery1.9.1/jquery-1.9.1.js"></script>
+
+
+<script src="~/Content/jquery1.10.3/jquery-ui.js"></script>
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+<script src="~/Scripts/jquery-1.9.1.min.js"></script>
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+
+
+
+@*bootstrap -Clock Picker*@
+<link href="~/Content/bootstrap_clock_picker/src/clockpicker.css" rel="stylesheet" />
+<script src="~/Content/bootstrap_clock_picker/src/clockpicker.js"></script>
+<link href="~/Content/bootstrap_clock_picker/src/standalone.css" rel="stylesheet" />
+
+@*<style>
+    .ui-autocomplete {
+        cursor: pointer;
+        height: 120px;
+        overflow-y: scroll;
+    }
+</style>*@
+
+
+
+
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+
+
+
+    <div id="contentHeaderBox">
+        <h1 style="padding-left:16px">Patient - Indoor Information</h1>
+
+        <div class="btn-group pull-right" id="editOption">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                <i class="fa fa-cog"></i>
+            </button>
+            <ul class="dropdown-menu pull-right" style="" role="menu">
+
+                <li>
+                    <a href="@Url.Action("Index", "PatientIndoor")"><i class="fa fa-plus"></i> Create</a>
+                </li>
+                @*<li>
+                    <a href="@Url.Action("Update", "Refer")"><i class="fa fa-edit"></i> Update</a>
+                </li>*@
+                @*<li>
+                        <a href="@Url.Action("Delete", "JobInformation")"><i class="fa fa-times"></i> Delete</a>
+                    </li>*@
+
+            </ul>
+        </div>
+
+    </div>
+    <br />
+    <div class="col-md-12">
+        <div>
+
+
+
+            <div class="form-group">
+
+                <div class="row">
+                    @Html.HiddenFor(model => model.COMPID, new { id = "txtcompid", style = "width:3em;", @Value = compid })
+                
+                    <div class="col-md-2">
+                        <label>Entry Date</label>
+                    </div>
+                    <div class="col-md-3">
+                        @Html.TextBoxFor(model => model.TransactionDT, new { id = "TransactionDT", @class = "form-control", required = "required", @readonly = "readonly", @Value = currentDateTime.ToString("dd-MMM-yyyy") })
+                    </div>
+                    <div class="col-md-2">
+                        <label>Daily Serial</label>
+                    </div>
+                    <div class="col-md-3">
+                        @Html.TextBoxFor(model => model.PatientID, new { id = "PatientID", @class = "form-control", @readonly = "readonly", tabIndex = "-1", @Value = patientid })
+                    </div>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="col-md-2">
+                        <label>Patient Name</label>
+                    </div>
+                    <div class="col-md-3">
+                        @Html.TextBoxFor(model => model.PatientName, new { id = "PatientName", @class = "form-control", required = "required", @autofocus = "true" })
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label>Patient ID</label>
+                    </div>
+                    <div class="col-md-3">
+                        @Html.TextBoxFor(model => model.PatientYearID, new { id = "PatientYearID", @class = "form-control", @readonly = "readonly", tabIndex = "-1", @Value = patientyear })
+                    </div>
+                </div>
+                <br/>
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label>Gurdian Name</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.GurdianName, new { id = "GurdianName", @class = "form-control" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>Age</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.Age, new { id = "Age", @class = "form-control" })
+                        </div>
+                        
+                    </div>
+                <br />
+                <div class="row">
+                    <div class="col-md-2">
+                        <label>Gender</label>
+                    </div>
+                    <div class="col-md-3">
+                        @Html.DropDownListFor(model => model.gender,listgender, new { id = "gender", @class = "form-control" })
+                    </div>
+                </div>
+               <br/>
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label>Date of Birth</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.DateOfBirth, new { id = "DateOfBirth", @class = "form-control" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>Marital Status</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.DropDownListFor(model => model.MaritalStatus,maritalstatus, new { id = "MaritalStatus", @class = "form-control" })
+                        </div>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label>Religion</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.DropDownListFor(model => model.Religion,religion, new { id = "Religion", @class = "form-control" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>Occupation</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.Occupation, new { id = "Occupation", @class = "form-control" })
+                        </div>
+
+                    </div>
+                    <br />
+
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label>Telephone No</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.TelephoneNo, new { id = "TelephoneNo", @class = "form-control" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>Mobile No</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.MobileNo, new { id = "MobileNo", @class = "form-control", required = "required", MaxLength = "11" })
+                            @Html.ValidationMessageFor(model => model.MobileNo, "", new { @class = "text-danger" })
+                        </div>
+
+                    </div>
+                    <br />
+                <div class="row">
+                    <div class="col-md-2">
+                        <label>Present Address</label>
+                    </div>
+                    <div class="col-md-8">
+                        @Html.TextBoxFor(model => model.PresentAddress, new { id = "PresentAddress", @class = "form-control" })
+                    </div>
+                    
+
+                </div>
+                <br/>
+                <div class="row">
+                   
+                    <div class="col-md-2">
+                        <label>Permanent Address</label>
+                    </div>
+                    <div class="col-md-8">
+                        @Html.TextBoxFor(model => model.PermanentAddress, new { id = "PermanentAddress", @class = "form-control" })
+                    </div>
+
+                </div>
+                <hr />
+              
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label>Admit Date</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.AdmitDate, new { id = "AdmitDate", @class = "form-control", required = "required" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>Admit Time</label>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group clockpicker" data-align="top" data-autoclose="true">
+                                @Html.TextBoxFor(model => model.AdmitTime, htmlAttributes: new { id = "AdmitTime", @class = "form-control", required = "required", @Value = "00:01" })
+                                <span class="input-group-addon">
+                                    <span class="glyphicon glyphicon-time"></span>
+                                </span>
+                            </div>
+                           
+                        </div>
+                        @*<div class="col-md-3 clockpicker" data-align="top" data-autoclose="true">
+                            @Html.TextBoxFor(model => model.AdmitTime, new { id = "AdmitTime", @class = "form-control input-sm",required = "required", @Value = "00:01" })
+
+                        </div>*@
+
+                    </div>
+                    <br />
+                    <div class="row">
+                        @Html.HiddenFor(model => model.DoctorID, new { id = "DoctorID", style = "width:10em;" })
+                        @Html.HiddenFor(model => model.ReferID, new { id = "ReferId", style = "width:10em;" })
+                        <div class="col-md-2">
+                            <label>Doctor Name</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.DoctorName, new { id = "DoctorName", @class = "form-control" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>Referer Name</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.ReferName, new { id = "ReferName", @class = "form-control" })
+                        </div>
+
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label>Remarks</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.Remarks, new { id = "Remarks", @class = "form-control" })
+                        </div>
+                        <div class="col-md-2">
+                            <label>RF(%)</label>
+                        </div>
+                        <div class="col-md-3">
+                            @Html.TextBoxFor(model => model.Percentage, new { id = "Percentage", @class = "form-control" })
+                        </div>
+                       
+
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-md-2">
+
+                        </div>
+                        <div class="col-md-2">
+                            <input type="submit" value="Submit" class="btn btn-primary" name="command" />
+                        </div>
+                        <div class="col-md-6">
+                            <input type="submit" value="Refresh" class="btn btn-primary" />
+                        </div>
+                    </div>
+
+
+
+                </div>
+
+
+
+            <hr />
+
+            @Html.TextBoxFor(model => model.INSLTUDE, new { id = "latlonPos", style = "display: none;" })
+            <input id="lat" type="hidden" />
+            <input id="lon" type="hidden" />
+            @Html.TextBoxFor(model => model.INSUSERID, new { id = "InsUserID", style = "display: none;", @Value = LoggedUserId })
+
+
+
+        </div>
+    </div>
+
+     //datatime picker script
+    <script type="text/javascript">
+        $('.clockpicker').clockpicker();
+    </script>
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false">
+    </script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlonPos").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+                $("#latlonRms").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+    </script>
+
+
+
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            //$("#TransactionDT").datepicker({ dateFormat: 'dd-M-yy', changeYear: true });
+            $("#DateOfBirth").datepicker({ dateFormat: 'dd-M-yy', changeYear: true });
+            $("#AdmitDate").datepicker({ dateFormat: 'dd-M-yy', changeYear: true });
+
+
+
+            $('#ReferName').autocomplete({
+                source: function (request, response) {
+                    var changedText2 = $("#txtcompid").val();
+                    $.ajax({
+
+                        url: '/api/ReferList',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: changedText2 },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item.ReferName,
+                                    value: item.ReferName,
+                                    id: item.ReferId
+
+                                };
+                            }));
+                        }
+                    });
+                },
+
+                select: function (event, ui) {
+                    $('#ReferName').val(ui.item.label);
+                    $('#ReferId').val(ui.item.id);
+
+
+                    return false;
+                },
+                change: $('#ReferName').keyup(_.debounce(txtOneChanged, 1000))
+            });
+
+            $('#DoctorName').autocomplete({
+                source: function (request, response) {
+                    var changedText2 = $("#txtcompid").val();
+                    $.ajax({
+
+                        url: '/api/ReferList',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: changedText2 },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item.ReferName,
+                                    value: item.ReferName,
+                                    id: item.ReferId
+
+                                };
+                            }));
+                        }
+                    });
+                },
+
+                select: function (event, ui) {
+                    $('#DoctorName').val(ui.item.label);
+                    $('#DoctorID').val(ui.item.id);
+
+
+                    return false;
+                },
+                change: $('#DoctorName').keyup(_.debounce(txtOneChanged2, 1000))
+            });
+
+         
+
+        });
+        function txtOneChanged() {
+
+
+            var changedText = $("#ReferName").val();
+            var changedText2 = $("#txtcompid").val();
+
+            var Name = document.getElementById('ReferName');
+            var txtBox = document.getElementById('ReferId');
+
+            if (changedText != "") {
+
+                $.getJSON(
+                    '/api/DynamicRefer', { "ChangedText": changedText, "ChangedText2": changedText2 },
+                    function (result) {
+                        Name.value = result[0].ReferName;
+                        txtBox.value = result[0].ReferId;
+
+
+                    });
+
+            }
+
+
+
+        }
+
+        function txtOneChanged2() {
+
+
+            var changedText = $("#DoctorName").val();
+            var changedText2 = $("#txtcompid").val();
+
+            var Name = document.getElementById('DoctorName');
+            var txtBox = document.getElementById('DoctorID');
+
+
+            if (changedText != "") {
+
+                $.getJSON(
+                    '/api/DynamicRefer', { "ChangedText": changedText, "ChangedText2": changedText2 },
+                    function (result) {
+                        Name.value = result[0].ReferName;
+                        txtBox.value = result[0].ReferId;
+
+
+
+                    });
+
+            }
+
+
+
+        }
+
+    </script>
+
+
+  
+
+
+}
+
+
+
+
+
+
+
+
+
+
+@*<script src="~/Scripts/angularjs/ui-bootstrap-tpls-0.4.0.js"></script>*@
+
+
+
+
+<script src="~/Scripts/Underscore.js"></script>
+
+
+@section Scripts {
+   
+    @Scripts.Render("~/bundles/jqueryval")
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

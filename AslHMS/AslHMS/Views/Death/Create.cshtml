@@ -1,0 +1,543 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using AslHMS.Models
+@using System.Web.Optimization
+@model AslHMS.Models.DTO.DeathDTO
+
+@{
+    ViewBag.Title = "Create";
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    Int64 LoggedCompId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedCompID"]);
+    AslHMSApiContext db = new AslHMSApiContext();
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+
+
+    List<SelectListItem> listofCousultancy = new List<SelectListItem>();
+    var result = (from n in db.HMS_REFER
+                  where n.COMPID == LoggedCompId
+                  select n).ToList();
+
+    foreach (var n in result)
+    {
+        listofCousultancy.Add(new SelectListItem { Text = n.REFERNM, Value = n.REFERID.ToString() });
+    }
+
+
+
+    string current_Year = Convert.ToString(currentDateTime.ToString("yyyy"));
+    Int64 transYear = Convert.ToInt64(current_Year);
+
+    Int64 max_TransNO = 0;
+    try
+    {
+        max_TransNO = Convert.ToInt64((from n in db.HmsDeathDbSet where LoggedCompId == n.COMPID && n.TRANSYY == transYear select n.TRANSNO).Max());
+    }
+    catch
+    {
+        max_TransNO = 0;
+    }
+
+    string Year = Convert.ToString(current_Year.Substring(2, 2));
+    Int64 TranNO = 0, R = Convert.ToInt64(Year + "999999");
+    if (max_TransNO == 0)
+    {
+        TranNO = Convert.ToInt64(Year + "000001");
+    }
+    else if (max_TransNO <= R)
+    {
+        TranNO = max_TransNO + 1;
+    }
+    else
+    {
+        TempData["DeathCreationMessage"] = "Not possible entry!";
+    }
+
+
+
+    List<SelectListItem> listofPatientYear = new List<SelectListItem>();
+    var findPatientYear = (from m in db.HMS_IpdDbSet where m.COMPID == LoggedCompId select new { m.PATIENTYY }).Distinct().OrderByDescending(m => m.PATIENTYY);
+    foreach (var v in findPatientYear)
+    {
+        listofPatientYear.Add(new SelectListItem { Text = v.PATIENTYY.ToString(), Value = v.PATIENTYY.ToString() });
+    }
+}
+
+<link href="~/Content/bootstrap-3.2.0-dist/css/bootstrap-theme.css" rel="stylesheet" />
+<script src="~/Content/bootstrap-3.2.0-dist/js/bootstrap.js"></script>
+@*bootstrap -Clock Picker*@
+<link href="~/Content/bootstrap_clock_picker/src/clockpicker.css" rel="stylesheet" />
+<script src="~/Content/bootstrap_clock_picker/src/clockpicker.js"></script>
+<link href="~/Content/bootstrap_clock_picker/src/standalone.css" rel="stylesheet" />
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+    @Html.HiddenFor(model => model.COMPID, new { @Value = LoggedCompId })
+    @Html.HiddenFor(model => model.PATIENTTP, new { @Value = "INDOOR" })
+    @*@Html.HiddenFor(model => model.PATIENTYYID, new { id = "hiddentxt_PatientYearID" })*@
+    @Html.HiddenFor(model => model.PATIENTID, new { id = "txt_PatientID" })
+    @Html.HiddenFor(model => model.DDOCTORID, new { id = "txt_DDOCTORID" })
+    @*@Html.HiddenFor(model => model.PATIENTYY, new { id = "hiddentxt_PatientYear" })*@
+
+    <div id="contentHeaderBox">
+        @if (TempData["DeathCreationMessage"] != null)
+        {
+            <h1 style="padding-left: 16px">Create Death Certificate<span style="color: #226699;margin-left: 100px">@TempData["DeathCreationMessage"]</span></h1>
+        }
+        else
+        {
+            <h1 style="padding-left: 16px">Create Death Certificate</h1>
+        }
+        @if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A")
+        {
+            var createStatus = "";
+            var updateStatus = "";
+            var deleteStatus = "";
+            var status = "";
+            var loggedUserID = HttpContext.Current.Session["loggedUserID"].ToString();
+            System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["AslHMSApiContext"].ToString());
+
+            string query1 = string.Format("SELECT STATUS, INSERTR, UPDATER, DELETER FROM ASL_ROLE WHERE  CONTROLLERNAME='Death' AND COMPID='{0}' AND USERID = '{1}'", LoggedCompId, loggedUserID);
+
+            System.Data.SqlClient.SqlCommand cmd1 = new System.Data.SqlClient.SqlCommand(query1, conn);
+            conn.Open();
+
+            SqlDataAdapter da1 = new SqlDataAdapter(cmd1);
+            DataTable ds1 = new DataTable();
+            da1.Fill(ds1);
+
+            foreach (DataRow row in ds1.Rows)
+            {
+                status = row["STATUS"].ToString();
+                createStatus = row["INSERTR"].ToString();
+                updateStatus = row["UPDATER"].ToString();
+                deleteStatus = row["DELETER"].ToString();
+            }
+            conn.Close();
+
+
+            if (createStatus == "A")
+            {
+
+            }
+            else if (updateStatus == "A")
+            {
+                Response.Redirect("~/Death/Update");
+            }
+            else if (deleteStatus == "A")
+            {
+                Response.Redirect("~/Death/Delete");
+            }
+
+            if (createStatus == "I")
+            {
+                Response.Redirect("~/GraphView/Index");
+            }
+
+            <div class="btn-group pull-right" id="editOption">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                    <i class="fa fa-cog"></i>
+                </button>
+                <ul class="dropdown-menu pull-right" style="" role="menu">
+                    @if (createStatus == 'A'.ToString() && updateStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (updateStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString() && updateStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                    }
+                    else if (updateStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                    }
+                    else if (deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+    <br />
+
+    <div class="col-md-12">
+
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Entry Date", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @*patientDate datatype is 'DateTime'. So Firefox cannot work string to datetime auto coversion.so TRANSDT field convert to string in model DTO class*@
+                    @Html.TextBoxFor(model => model.TRANSDT, htmlAttributes: new { @class = "form-control", @Value = currentDateTime.ToString("dd-MMM-yyyy"), @readonly = "readonly", required = "required", tabindex = "-1" })
+                    @Html.ValidationMessageFor(model => model.TRANSDT, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Year", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.TRANSYY, htmlAttributes: new { @class = "form-control", @Value = currentDateTime.ToString("yyyy"), @readonly = "readonly", required = "required", tabindex = "-1" })
+                    @Html.ValidationMessageFor(model => model.TRANSYY, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Serial No", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.TRANSNO, htmlAttributes: new { @class = "form-control", @readonly = "readonly", @Value = TranNO, tabindex = "-1" })
+                    @Html.ValidationMessageFor(model => model.TRANSNO, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Patient Year", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.DropDownListFor(model => model.PATIENTYY, listofPatientYear, htmlAttributes: new { @class = "form-control", id = "txt_PatientYear", })
+                    @Html.ValidationMessageFor(model => model.PATIENTYY, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Patient ID", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.PATIENTYYID, htmlAttributes: new {@class = "form-control", id = "hiddentxt_PatientYearID", pattern = ".{10,10}", maxlength = "10", required = "required", autofocus = true})
+                    @Html.ValidationMessageFor(model => model.PATIENTYYID, "", new {@class = "text-danger"})
+                </div>
+                <div class="col-md-4">
+                    <h5 class="text-danger" id="txtValidationID">This patient ID alredy exists !!</h5>
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                @*<div class="col-md-2">
+                        @Html.Label("name", "Patient ID", htmlAttributes: new { @class = "control-label" })
+                    </div>
+                    <div class="col-md-2">
+                        @Html.TextBoxFor(model => model.PATIENTYYID, htmlAttributes: new { @class = "form-control", id = "hiddentxt_PatientYearID", autofocus = true, pattern = ".{10,10}", maxlength = "10", required = "required" })
+                        @Html.ValidationMessageFor(model => model.PATIENTYYID, "", new { @class = "text-danger" })
+                    </div>*@
+                <div class="col-md-2">
+                    @Html.Label("name", "Patient Name", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-6">
+                    @Html.TextBoxFor(model => model.PatientName, htmlAttributes: new { @class = "form-control", id = "txtPatientName", @readonly = "true", tabindex = "-1" })
+                    @Html.ValidationMessageFor(model => model.PatientName, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Death Date", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.DEATHDT, htmlAttributes: new { @class = "form-control", id = "txtDeathDate", required = "required" })
+                    @Html.ValidationMessageFor(model => model.DEATHDT, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Death Time", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    <div class="input-group clockpicker" data-align="top" data-autoclose="true">
+                        @Html.TextBoxFor(model => model.DEATHTM, htmlAttributes: new { @class = "form-control", @Value = "00:01", id = "txtDeathTime" })
+                        <span class="input-group-addon">
+                            <span class="glyphicon glyphicon-time"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Consultancy name: ", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.DropDownListFor(model => model.DCONSULTID, listofCousultancy, "--select--", htmlAttributes: new { @class = "form-control", id = "txt_DCONSULTID" })
+                    @Html.ValidationMessageFor(model => model.DCONSULTID, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Doctor name: ", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(model => model.DDoctorName, htmlAttributes: new { @class = "form-control", id = "txt_DDoctorName", @readonly = "readonly" })
+                    @Html.ValidationMessageFor(model => model.DDoctorName, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Cause A: ", htmlAttributes: new { @class = "control-label" })
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.DCAUSE_A, htmlAttributes: new { @class = "form-control" })
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Cause B: ", htmlAttributes: new { @class = "control-label" })
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.DCAUSE_B, htmlAttributes: new { @class = "form-control" })
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Cause C: ", htmlAttributes: new { @class = "control-label" })
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.DCAUSE_C, htmlAttributes: new { @class = "form-control" })
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Remarks", htmlAttributes: new { @class = "control-label" })
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.REMARKS, htmlAttributes: new { @class = "form-control" })
+                </div>
+            </div>
+
+
+            @Html.TextBoxFor(model => model.INSLTUDE, new { id = "latlon", style = "display: none;" })
+            <input id="lat" type="hidden" />
+            <input id="lon" type="hidden" />
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-10"></div>
+                <div class="col-md-2">
+                    <input type="submit" class="btn btn-primary btn-block" value="Save" name="command" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+        //datatime picker script
+        <script type="text/javascript">
+            $('.clockpicker').clockpicker();
+        </script>
+
+        //Latitute & longitude
+        <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+
+        <script language="javascript" type="text/javascript">
+            $(function () {
+                navigator.geolocation.getCurrentPosition(showPosition);
+                //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+                function showPosition(position) {
+                    var coordinates = position.coords;
+                    $("#lat").val(coordinates.latitude);
+                    $("#lon").val(coordinates.longitude);
+
+                    $("#latlon").val(
+                        $("#lat").val() + "," + $("#lon").val()
+                    );
+                }
+            });
+
+
+
+            $(document).ready(function () {
+                $("#txtValidationID").hide();
+
+                $('#txt_PatientYear').change(function () {
+                    $("#hiddentxt_PatientYearID").val("");
+                    $("#txtPatientName").val("");
+                    $("#txt_PatientID").val("");
+                    $("#txt_DDOCTORID").val(""); 
+                    $("#txt_DDoctorName").val("");
+                    $("#txtValidationID").hide();
+                    document.getElementById("hiddentxt_PatientYearID").focus();
+                });
+
+                $("#txtDeathDate").datepicker({
+                    dateFormat: 'dd-M-yy',
+                    changeYear: true,
+                    onClose: function (dateText, inst) {
+                        document.getElementById("txtDeathTime").focus();
+                    }
+                });
+
+
+                $('#hiddentxt_PatientYearID').autocomplete({
+
+                    //source: '@Url.Action("TagSearch_PatientInfo", "Death")',
+                    source: function (request, response) {
+                        $.ajax({
+                            url: '/Death/TagSearch_PatientInfo',
+                            type: 'GET',
+                            cache: false,
+                            dataType: 'json',
+                            data: {
+                                term: request.term,
+                                patientYear: $('#txt_PatientYear option:selected').val()
+                            },
+                            success: function (data) {
+                                response($.map(data, function (item) {
+                                    return {
+                                        label: item,
+                                        value: item,
+                                    };
+                                }));
+                            }
+                        });
+                    },
+                    change: $('#hiddentxt_PatientYearID').keyup(_.debounce(txtOneChanged, 500)),
+                    select: function (event, ui) {
+                        $("#hiddentxt_PatientYearID").val(ui.item.label);
+                        txtOneChanged();
+                    },
+                });
+
+
+                function txtOneChanged() {
+                    var changedText = $("#hiddentxt_PatientYearID").val();
+                    var patientYear = $("#txt_PatientYear").val();
+
+                    var txtBox = document.getElementById('hiddentxt_PatientYearID');
+                    var txt_PatientID = document.getElementById('txt_PatientID');
+                    //var hiddentxt_PatientYear = document.getElementById('hiddentxt_PatientYear');
+                    var txtPatientName = document.getElementById('txtPatientName');
+                    var txt_DDOCTORID = document.getElementById('txt_DDOCTORID');
+                    var txt_DDoctorName = document.getElementById('txt_DDoctorName');
+
+                    if (changedText != "") {
+                        $.getJSON(
+                            '/Death/keyword_PatientInfo', { "ChangedText": changedText, "PatientYear": patientYear },
+                            function (myData) {
+                                txtBox.value = myData.PATIENTYYID;
+
+                                txt_PatientID.value = myData.PATIENTID;
+                                //hiddentxt_PatientYear.value = myData.PATIENTYY;
+                                txtPatientName.value = myData.PATIENTNM;
+                                txt_DDOCTORID.value = myData.DDOCTORID;
+                                txt_DDoctorName.value = myData.DOCTORNAME;
+
+                                var message= myData.ValidationMeassage;
+                                if (message == 1) {
+                                    $("#txtValidationID").show();
+                                }
+                                //document.getElementById("txt_PATIENTNM").focus();
+                            });
+                    }
+
+                    $("#txt_PatientID").val("");
+                    //$("#hiddentxt_PatientYear").val("");
+                    $("#txtPatientName").val("");
+                    $("#txt_DDOCTORID").val("");
+                    $("#txt_DDoctorName").val("");
+                }
+
+            });
+
+        </script>
+
+
+        <style type="text/css">
+            .ui-autocomplete {
+                position: absolute;
+                cursor: default;
+                background: #f0ffff;
+                max-height: 100px;
+                overflow-y: auto;
+                /* prevent horizontal scrollbar */
+                overflow-x: hidden;
+                /* add padding to account for vertical scrollbar */
+                padding-right: 20px;
+            }
+        </style>
+}
+
+
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+<script src="~/Scripts/jquery-1.10.2.js"></script>
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+<script src="~/Scripts/Underscore.js"></script>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
+

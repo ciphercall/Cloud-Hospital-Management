@@ -1,0 +1,285 @@
+﻿@using AslHMS.Controllers.HMS
+@using AslHMS.Models
+@model AslHMS.Models.DTO.PharmacyDTO
+
+
+@{
+    ViewBag.Title = "GetSaleMemo_Reports_BigSize";
+    Layout = null;
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    AslHMSApiContext db = new AslHMSApiContext();
+
+    var companyId = Convert.ToInt64(Model.COMPID);
+    var TransactionType = Convert.ToString(Model.TRANSTP);
+    var MonthYear = Convert.ToString(Model.TRANSMY);
+    var InvoiceNo = Convert.ToInt64(Model.TRANSNO);
+    
+    string companyName = "", address = "", address2 = "", contactNo = "";
+    var SelectUserName = from m in db.AslCompanyDbSet where m.COMPID == companyId select new { m.COMPNM, m.ADDRESS, m.CONTACTNO };
+    foreach (var n in SelectUserName)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        contactNo = n.CONTACTNO;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+
+
+    Decimal totalAmount = 0, vatAmount = 0, discount = 0, netAmount = 0, vateRate = 0;
+    var parentDatafound = from n in db.HmsPharmMstDbSet
+                          where n.COMPID == companyId && n.TRANSTP == TransactionType && n.TRANSMY == MonthYear && n.TRANSNO == InvoiceNo
+                          select new { n.TOTAMT, n.VATAMT, n.DISCOUNT, n.NETAMT, n.PATIENTID, n.PATIENTTP };
+
+    foreach (var a in parentDatafound)
+    {
+        totalAmount = Convert.ToInt64(a.TOTAMT);
+        vateRate = Convert.ToDecimal(Model.VATRT);
+        vatAmount = Convert.ToDecimal(a.VATAMT);
+        discount = Convert.ToDecimal(a.DISCOUNT);
+        netAmount = Convert.ToDecimal(a.NETAMT);
+
+    }
+
+    
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+    Decimal totalGross = 0;
+
+    var childDataList = (from mediCare in db.HmsMediCareDbSet
+                         join pharmacy in db.HmsPharmacyDbSet on mediCare.COMPID equals pharmacy.COMPID
+                         where mediCare.COMPID == companyId && mediCare.MEDIID == pharmacy.MEDIID &&
+                         pharmacy.TRANSTP == TransactionType && pharmacy.TRANSMY == MonthYear && pharmacy.TRANSNO == InvoiceNo
+                         select new
+                         {
+                             pharmacy.ID,
+                             pharmacy.COMPID,
+                             pharmacy.TRANSTP,
+                             pharmacy.TRANSDT,
+                             pharmacy.TRANSMY,
+                             pharmacy.TRANSNO,
+
+                             pharmacy.ITEMSL,
+                             pharmacy.MEDIID,
+                             mediCare.MEDINM,
+                             pharmacy.QTY,
+                             pharmacy.RATE,
+                             pharmacy.AMOUNT,
+
+                             pharmacy.INSIPNO,
+                             pharmacy.INSLTUDE,
+                             pharmacy.INSTIME,
+                             pharmacy.INSUSERID,
+                         }).OrderBy(e => e.ITEMSL).ToList();
+}
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+
+</head>
+<body style=" background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                </tr>
+
+                <tr style="background-color: #00689b">
+                    @*@if (companyId == 101)
+                        {
+                            <td colspan="1" style="background-color: white;">
+                                <img src="~/Content/Company-Logo/MILLENNIUM-TEA-TRADERS.jpg" width="100" height="70" alt="" />
+                            </td>
+                            <td colspan="7">
+                                <h3 style="color: white;padding:4px">@compNm</h3>
+                                <p style="color:white;padding-left:4px">@Address<br /> @address2</p>
+                            </td>
+                            <td colspan="2" style="color: white;padding:8px" align="right">
+                                Powered By<br />Alchemy Software
+                            </td>
+                        }*@
+
+                    <td colspan="7">
+                        <h3 style="color: white;padding:4px">@compNm</h3>
+                        <p style="color:white;padding-left:4px">@Address<br />@address2</p>
+                    </td>
+                    <td colspan="3" style="color: white;padding:8px" align="right">
+                        Powered By<br />Alchemy Software
+                    </td>
+
+                </tr>
+
+                <tr>
+                    <td colspan="7" align="left" style="padding: 4px; font-weight: bold">@ViewBag.TransactionType Memo</td>
+                    <td align="right" colspan="3" style="padding:8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+
+                <tr style="outline: thin solid">
+                    <td colspan="1" align="left">Type: </td>
+                    <td colspan="2" style="font-weight: bold">@ViewBag.TransactionType</td>
+                    <td colspan="1" align="left">Date: </td>
+                    <td colspan="2" style="font-weight: bold">@ViewBag.TransDate</td>
+                    <td colspan="1" align="left">Memo No: </td>
+                    <td colspan="3" style="font-weight: bold">@InvoiceNo</td>
+                </tr>
+                <tr>
+                    <td colspan="1" align="left">Patient Type: </td>
+                    <td colspan="2">@ViewBag.PatientType </td>
+                    <td colspan="1" align="left">Patient ID: </td>
+                    <td colspan="2">@ViewBag.PatientID </td>
+                    <td colspan="1" align="left">Patient Name: </td>
+                    <td colspan="3">@ViewBag.PatientName </td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="2" align="left">@ViewBag.LevelOfDepartment: </td>
+                    <td colspan="8" align="left">@ViewBag.DepartmentName </td>
+                </tr>
+
+                <tr style="background-color: #00689b; outline: thin solid">
+                    <td colspan="4" style="color: white; padding: 4px" align="center">Item Name</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Qty</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Rate</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Amount</td>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in childDataList)
+                {
+                    <tr>
+                        <td colspan="4" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.MEDINM)
+                        </td>
+                        <td colspan="2" align="right" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.QTY)
+                        </td>
+                        <td colspan="2" align="right" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.RATE)
+                        </td>
+                        <td colspan="2" align="right" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.AMOUNT)
+                        </td>
+                    </tr>
+                    totalGross = totalGross + Convert.ToDecimal(item.AMOUNT);
+                }
+
+
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Total Amount:</strong></td>
+                    <td align="right" colspan="2" style="font-weight: bold">
+                        @totalGross
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Vate Rate(%):</strong></td>
+                    <td align="right" colspan="2" style="font-weight: bold">
+                        @vateRate
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>VAT:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @vatAmount
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Discount:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @discount
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Net Total:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @netAmount
+                    </td>
+                </tr>
+
+                @{
+                    string amount = "", InWords = "";
+                    amount = Convert.ToString(netAmount);
+                    InWords = SpellAmount.MoneyConvFn(amount);
+                }
+                <tr>
+                    <td><br /></td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="10" align="left" style="padding-left:8px">In Words : @InWords</td>
+                </tr>
+                <tr>
+                    <td align="center" colspan="10"><strong>THANK YOU</strong></td>
+                </tr>
+                <tr>
+                    <td><br /></td>
+                </tr>
+                <tr>
+                    <td><br /></td>
+                </tr>
+                <tr>
+                    <td colspan="2" align="left" style="padding-left:8px"><hr></td>
+                    <td colspan="2"></td>
+                    <td colspan="2" align="left" style="padding-left:8px"><hr></td>
+                    <td colspan="2"></td>
+                    <td colspan="2" align="left" style="padding-left:8px"><hr></td>
+                </tr>
+                <tr>
+                    <td colspan="2" align="center" style="padding-left:8px">Receiver's Signature</td>
+                    <td colspan="2"></td>
+                    <td colspan="2" align="center" style="padding-left:8px">Checked By</td>
+                    <td colspan="2"></td>
+                    <td colspan="2" align="center" style="padding-left:8px">Authorized By</td>
+                </tr>
+
+
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
+
+

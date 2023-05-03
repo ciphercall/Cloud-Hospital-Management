@@ -1,0 +1,563 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using AslHMS.Models
+@using System.Web.Optimization
+@model AslHMS.Models.DTO.DeathDTO
+@{
+    ViewBag.Title = "Update";
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    Int64 LoggedCompId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedCompID"]);
+    AslHMSApiContext db = new AslHMSApiContext();
+
+
+    List<SelectListItem> listofCousultancy = new List<SelectListItem>();
+    List<SelectListItem> listofDoctors = new List<SelectListItem>();
+    var result = (from n in db.HMS_REFER
+                  where n.COMPID == LoggedCompId
+                  select n).ToList();
+
+    foreach (var n in result)
+    {
+        listofCousultancy.Add(new SelectListItem { Text = n.REFERNM, Value = n.REFERID.ToString() });
+        listofDoctors.Add(new SelectListItem { Text = n.REFERNM, Value = n.REFERID.ToString() });
+    }
+
+
+
+    List<SelectListItem> listofPatientYear = new List<SelectListItem>();
+    var findPatientYear = (from m in db.HMS_IpdDbSet where m.COMPID == LoggedCompId select new { m.PATIENTYY }).Distinct().OrderByDescending(m => m.PATIENTYY);
+    foreach (var v in findPatientYear)
+    {
+        listofPatientYear.Add(new SelectListItem { Text = v.PATIENTYY.ToString(), Value = v.PATIENTYY.ToString() });
+    }
+}
+
+
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+    @Html.HiddenFor(model => model.ID, new { id = "Hiddentxt_pst_Patient_Id" })
+    @Html.HiddenFor(model => model.COMPID, new { id = "HiddentxtCompanyID", @Value = LoggedCompId })
+    @Html.HiddenFor(model => model.PATIENTTP, new { @Value = "INDOOR" })
+    @Html.HiddenFor(model => model.PATIENTID, new { id = "hiddentxt_PatientID" })
+    @*@Html.HiddenFor(model => model.PATIENTYYID, new { id = "hiddentxt_PatientYearID" })*@
+    @*@Html.HiddenFor(model => model.PATIENTYY, new { id = "HiddentxtPATIENTYY" })*@
+    @Html.HiddenFor(model => model.TRANSYY, new { id = "HiddentxtTransYY" })
+    @Html.HiddenFor(model => model.TRANSDT, new { id = "HiddentxtTransDT" })
+    @*@Html.HiddenFor(model => model.DCONSULTID, new { id = "Hiddentxt_DCONSULTID" })
+    @Html.HiddenFor(model => model.DDOCTORID, new { id = "Hiddentxt_DDOCTORID" })*@
+
+    <div id="contentHeaderBox">
+        @if (TempData["DeathDeleteMessage"] != null)
+        {
+            <h1 style="padding-left: 16px">Delete Death Certificate<span style="color: #226699;margin-left: 100px">@TempData["DeathDeleteMessage"]</span></h1>
+        }
+        else
+        {
+            <h1 style="padding-left: 16px">Delete Death Certificate</h1>
+        }
+        @if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A")
+        {
+            var createStatus = "";
+            var updateStatus = "";
+            var deleteStatus = "";
+            var status = "";
+            var loggedUserID = HttpContext.Current.Session["loggedUserID"].ToString();
+            System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["AslHMSApiContext"].ToString());
+
+            string query1 = string.Format("SELECT STATUS, INSERTR, UPDATER, DELETER FROM ASL_ROLE WHERE CONTROLLERNAME='Death' AND COMPID='{0}' AND USERID = '{1}'", LoggedCompId, loggedUserID);
+
+            System.Data.SqlClient.SqlCommand cmd1 = new System.Data.SqlClient.SqlCommand(query1, conn);
+            conn.Open();
+
+            SqlDataAdapter da1 = new SqlDataAdapter(cmd1);
+            DataTable ds1 = new DataTable();
+            da1.Fill(ds1);
+
+            foreach (DataRow row in ds1.Rows)
+            {
+                status = row["STATUS"].ToString();
+                createStatus = row["INSERTR"].ToString();
+                updateStatus = row["UPDATER"].ToString();
+                deleteStatus = row["DELETER"].ToString();
+            }
+            conn.Close();
+
+
+            if (deleteStatus == "A")
+            {
+
+            }
+            else if (createStatus == "A")
+            {
+                Response.Redirect("~/Death/Create");
+            }
+            else if (updateStatus == "A")
+            {
+                Response.Redirect("~/Death/Update");
+            }
+
+            if (deleteStatus == "I")
+            {
+                Response.Redirect("~/GraphView/Index");
+            }
+
+            <div class="btn-group pull-right" id="editOption">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                    <i class="fa fa-cog"></i>
+                </button>
+                <ul class="dropdown-menu pull-right" style="" role="menu">
+                    @if (createStatus == 'A'.ToString() && updateStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (updateStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString() && updateStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "Death")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                    }
+                    else if (updateStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Update", "Death")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                    }
+                    else if (deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Delete", "Death")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+
+        }
+
+    </div>
+
+    <div class="col-md-12">
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Patient ID", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.PATIENTYYID, htmlAttributes: new { @class = "form-control", id = "txt_PatientYearID", autofocus = true, pattern = ".{8,8}", maxlength = "8", required = "required" })
+                    @Html.ValidationMessageFor(model => model.PATIENTYYID, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Patient Year", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.DropDownListFor(model => model.PATIENTYY, listofPatientYear, htmlAttributes: new { @class = "form-control", id = "txtPatientYear" })
+                    @Html.ValidationMessageFor(model => model.PATIENTYY, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            @*<div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Serial No", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.TRANSNO, htmlAttributes: new { @class = "form-control", id = "txtTransNO", autofocus = true, pattern = ".{8,8}", maxlength = "8", required = "required" })
+                    @Html.ValidationMessageFor(model => model.TRANSNO, "", new { @class = "text-danger" })
+                </div>
+            </div>*@
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Serial No", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.TRANSNO, htmlAttributes: new { @class = "form-control", id = "txtTransNO", @readonly = "true", tabindex = "-1" })
+                    @Html.ValidationMessageFor(model => model.TRANSNO, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Patient Name", htmlAttributes: new {@class = "control-label"})
+                </div>
+                <div class="col-md-6">
+                    @Html.TextBoxFor(model => model.PatientName, htmlAttributes: new {@class = "form-control", id = "txtPatientName", @readonly = "true", tabindex = "-1"})
+                    @Html.ValidationMessageFor(model => model.PatientName, "", new {@class = "text-danger"})
+                </div>
+            </div>
+
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Death Date", htmlAttributes: new {@class = "control-label"})
+                </div>
+                <div class="col-md-2">
+                    @Html.TextBoxFor(model => model.DEATHDT, htmlAttributes: new {@class = "form-control", id = "txtDeathDate", @readonly = "true", tabindex = "-1"})
+                    @Html.ValidationMessageFor(model => model.DEATHDT, "", new {@class = "text-danger"})
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Death Time", htmlAttributes: new {@class = "control-label"})
+                </div>
+                <div class="col-md-2">
+                    <div class="input-group clockpicker" data-align="top" data-autoclose="true">
+                        @Html.TextBoxFor(model => model.DEATHTM, htmlAttributes: new {@class = "form-control", @Value = "00:01", id = "txtDeathTime", @readonly = "true", tabindex = "-1"})
+                        <span class="input-group-addon">
+                            <span class="glyphicon glyphicon-time"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Consultancy name: ", htmlAttributes: new {@class = "control-label"})
+                </div>
+                <div class="col-md-4">
+                    @Html.DropDownListFor(model => model.DCONSULTID, listofCousultancy, "--select--", htmlAttributes: new {@class = "form-control", id = "txt_DCONSULTID", @readonly = "true", tabindex = "-1"})
+                    @Html.ValidationMessageFor(model => model.DCONSULTID, "", new {@class = "text-danger"})
+                </div>
+                <div class="col-md-2">
+                    @Html.Label("name", "Doctor name: ", htmlAttributes: new {@class = "control-label"})
+                </div>
+                <div class="col-md-4">
+                    @Html.DropDownListFor(model => model.DDOCTORID, listofDoctors, "--select--", htmlAttributes: new {@class = "form-control", id = "txt_DDOCTORID", @readonly = "true", tabindex = "-1"})
+                    @Html.ValidationMessageFor(model => model.DDOCTORID, "", new {@class = "text-danger"})
+                </div>
+            </div>
+
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Cause A: ", htmlAttributes: new {@class = "control-label"})
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.DCAUSE_A, htmlAttributes: new {@class = "form-control", id = "txt_DCause_A", @readonly = "true", tabindex = "-1"})
+                </div>
+            </div>
+
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Cause B: ", htmlAttributes: new {@class = "control-label"})
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.DCAUSE_B, htmlAttributes: new {@class = "form-control", id = "txt_DCause_B", @readonly = "true", tabindex = "-1"})
+                </div>
+            </div>
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Cause C: ", htmlAttributes: new {@class = "control-label"})
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.DCAUSE_C, htmlAttributes: new {@class = "form-control", id = "txt_DCause_C", @readonly = "true", tabindex = "-1"})
+                </div>
+            </div>
+            <br/>
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Remarks", htmlAttributes: new {@class = "control-label"})
+                </div>
+
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.REMARKS, htmlAttributes: new {@class = "form-control", id = "txtRemarks", @readonly = "true", tabindex = "-1"})
+                </div>
+            </div>
+
+
+            @Html.HiddenFor(model => model.USERPC)
+            @Html.HiddenFor(model => model.INSTIME, new {id = "HiddentxtInstime"})
+            @Html.HiddenFor(model => model.INSIPNO, new {id = "HiddentxtInsipno"})
+            @Html.HiddenFor(model => model.INSLTUDE, new {id = "HiddentxtInsltude"})
+            @Html.HiddenFor(model => model.INSUSERID, new {id = "HiddentxtInsuserId"})
+
+            @Html.TextBoxFor(model => model.UPDLTUDE, new {id = "latlon", style = "display: none;"})
+            <input id="lat" type="hidden"/>
+            <input id="lon" type="hidden"/>
+
+
+            <br/>
+            <div class="row">
+                <div class="col-md-10"></div>
+                <div class="col-md-2">
+                    <input type="submit" class="btn btn-primary btn-block" value="Delete" id="btnDelete"/>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        //Latitute & longitude
+        <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+
+        <script language="javascript" type="text/javascript">
+            $(function () {
+                navigator.geolocation.getCurrentPosition(showPosition);
+                //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+                function showPosition(position) {
+                    var coordinates = position.coords;
+                    $("#lat").val(coordinates.latitude);
+                    $("#lon").val(coordinates.longitude);
+
+                    $("#latlon").val(
+                        $("#lat").val() + "," + $("#lon").val()
+                    );
+                }
+            });
+
+        </script>
+
+        <script type="text/javascript">
+
+            $(document).ready(function () {
+
+
+                document.getElementById("txt_DCONSULTID").disabled = true;
+                document.getElementById("txt_DDOCTORID").disabled = true;
+
+
+                $("#btnDelete").click(function () {
+                    document.getElementById("txt_DCONSULTID").disabled = false;
+                    document.getElementById("txt_DDOCTORID").disabled = false;
+                });
+
+                $('#txtPatientYear').change(function () {
+
+                    $("#Hiddentxt_pst_Patient_Id").val("");
+                    $("#hiddentxt_PatientID").val("");
+                    //$("#HiddentxtPATIENTYY").val("");
+                    $("#HiddentxtTransDT").val("");
+                    $("#HiddentxtTransYY").val("");
+
+                    $("#txt_PatientYearID").val("");
+                    $("#txtTransNO").val("");
+                    $("#txtPatientName").val("");
+                    $("#txtBabyGender").val("");
+                    $("#txtBabyName").val("");
+                    $("#txtDeathDate").val("");
+                    $("#txtDeathTime").val("");
+                    $("#txt_DCONSULTID").val("");
+                    $("#txt_DDOCTORID").val("");
+                    $("#txt_DCause_A").val("");
+                    $("#txt_DCause_B").val("");
+                    $("#txt_DCause_C").val("");
+                    $("#txtRemarks").val("");
+                    document.getElementById("txt_PatientYearID").focus();
+                });
+
+
+                $('#txt_PatientYearID').autocomplete({
+                    source: function (request, response) {
+                        $.ajax({
+                            url: '/Death/TagSearch_UD_Death',
+                            type: 'GET',
+                            cache: false,
+                            dataType: "json",
+                            data: {
+                                term: request.term,
+                                compid: $('#HiddentxtCompanyID').val(),
+                                patientYear: $('#txtPatientYear option:selected').val()
+                            },
+                            success: function (data) {
+                                response($.map(data, function (item) {
+                                    return {
+                                        label: item,
+                                        value: item
+                                    };
+                                }));
+                            }
+                        });
+                    },
+                    //source: '@Url.Action("TagSearch_UD_Death", "Death")',
+                    change: $('#txt_PatientYearID').keyup(_.debounce(txtOneChanged, 500)),
+                    select: function (event, ui) {
+                        $("#txt_PatientYearID").val(ui.item.label);
+                        txtOneChanged();
+                    },
+                });
+
+
+                function txtOneChanged() {
+
+                    var changedText = $("#txt_PatientYearID").val();
+                    var compid = $("#HiddentxtCompanyID").val();
+                    var pYear = $('#txtPatientYear option:selected').val();
+
+                    var txtBox = document.getElementById('txt_PatientYearID');
+                    var hiddentxt_pst_Patient_Id = document.getElementById('Hiddentxt_pst_Patient_Id');
+                    var hiddentxt_PatientID = document.getElementById('hiddentxt_PatientID');
+                    //var hiddentxt_PatientYearID = document.getElementById('hiddentxt_PatientYearID');
+                    //var HiddentxtPATIENTYY = document.getElementById('HiddentxtPATIENTYY');
+                    var HiddentxtTransDT = document.getElementById('HiddentxtTransDT');
+                    var HiddentxtTransYY = document.getElementById('HiddentxtTransYY');
+                    //var Hiddentxt_DCONSULTID = document.getElementById('Hiddentxt_DCONSULTID');
+                    //var Hiddentxt_DDOCTORID = document.getElementById('Hiddentxt_DDOCTORID');
+
+
+                    var txtTransNO = document.getElementById('txtTransNO');
+                    var txtPatientName = document.getElementById('txtPatientName');
+                    var txtDeathDate = document.getElementById('txtDeathDate');
+                    var txtDeathTime = document.getElementById('txtDeathTime');
+                    var txt_DCONSULTID = document.getElementById('txt_DCONSULTID');
+                    var txt_DDOCTORID = document.getElementById('txt_DDOCTORID');
+                    var txt_DCause_A = document.getElementById('txt_DCause_A');
+                    var txt_DCause_B = document.getElementById('txt_DCause_B');
+                    var txt_DCause_C = document.getElementById('txt_DCause_C');
+                    var txtRemarks = document.getElementById('txtRemarks');
+
+                    var txtInseruserId = document.getElementById('HiddentxtInsuserId');
+                    var txtInsertime = document.getElementById('HiddentxtInstime');
+                    var txtinslutude = document.getElementById('HiddentxtInsltude');
+                    var txtinseripno = document.getElementById('HiddentxtInsipno');
+
+                    if (changedText != "") {
+                        $.getJSON(
+                            '/Death/keyword_UD_Death', { "ChangedText": changedText, "Compid": compid, "PYear": pYear },
+                            function (myData) {
+                                txtBox.value = myData.PATIENTYYID;
+
+                                hiddentxt_pst_Patient_Id.value = myData.ID;
+                                hiddentxt_PatientID.value = myData.PATIENTID;
+                                //hiddentxt_PatientYearID.value = myData.PATIENTYYID;
+                                //HiddentxtPATIENTYY.value = myData.PATIENTYY;
+                                HiddentxtTransDT.value = myData.TRANSDT;
+                                HiddentxtTransYY.value = myData.TRANSYY;
+                                //Hiddentxt_DCONSULTID.value = myData.DCONSULTID;
+                                //Hiddentxt_DDOCTORID.value = myData.DDOCTORID;
+
+                                txtTransNO.value = myData.TRANSNO;
+                                txtPatientName.value = myData.PATIENTNM;
+                                txtDeathDate.value = myData.DEATHDT;
+                                txtDeathTime.value = myData.DEATHTM;
+                                txt_DCONSULTID.value = myData.DCONSULTID;
+                                txt_DDOCTORID.value = myData.DDOCTORID;
+                                txt_DCause_A.value = myData.DCAUSE_A;
+                                txt_DCause_B.value = myData.DCAUSE_B;
+                                txt_DCause_C.value = myData.DCAUSE_C;
+                                txtRemarks.value = myData.REMARKS;
+
+                                txtInseruserId.value = myData.INSUSERID;
+                                txtInsertime.value = myData.INSTIME;
+                                txtinslutude.value = myData.INSLTUDE;
+                                txtinseripno.value = myData.INSIPNO;
+
+                                //document.getElementById("txt_PATIENTNM").focus();
+                            });
+                    }
+
+                    $("#Hiddentxt_pst_Patient_Id").val("");
+                    $("#hiddentxt_PatientID").val("");
+                    //$("#HiddentxtPATIENTYY").val("");
+                    $("#HiddentxtTransDT").val("");
+                    $("#HiddentxtTransYY").val("");
+
+                    $("#txtTransNO").val("");
+                    $("#txtPatientName").val("");
+                    $("#txtBabyGender").val("");
+                    $("#txtBabyName").val("");
+                    $("#txtDeathDate").val("");
+                    $("#txtDeathTime").val("");
+                    $("#txt_DCONSULTID").val("");
+                    $("#txt_DDOCTORID").val("");
+                    $("#txt_DCause_A").val("");
+                    $("#txt_DCause_B").val("");
+                    $("#txt_DCause_C").val("");
+                    $("#txtRemarks").val("");
+                }
+
+            });
+
+        </script>
+
+
+        <style type="text/css">
+            .ui-autocomplete {
+                position: absolute;
+                cursor: default;
+                background: #f0ffff;
+                max-height: 100px;
+                overflow-y: auto;
+                /* prevent horizontal scrollbar */
+                overflow-x: hidden;
+                /* add padding to account for vertical scrollbar */
+                padding-right: 20px;
+            }
+        </style>
+}
+
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+<script src="~/Scripts/jquery-1.10.2.js"></script>
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+<script src="~/Scripts/Underscore.js"></script>
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
+
+
+
+
+
+
+
+
+
+
+

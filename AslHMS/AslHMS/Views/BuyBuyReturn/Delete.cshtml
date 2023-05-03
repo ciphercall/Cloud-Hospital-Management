@@ -1,0 +1,669 @@
+﻿@using AslHMS.Models
+@model AslHMS.Models.DTO.PharmacyDTO
+
+@{
+    ViewBag.Title = "Delete";
+
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+
+    AslHMSApiContext db = new AslHMSApiContext();
+    Int64 LoggedCompId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedCompID"]);
+    Int64 loggedUserID = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedUserID"]);
+
+    var query = from m in db.AslRoleDbSet
+                where m.COMPID == LoggedCompId && m.USERID == loggedUserID && m.CONTROLLERNAME == "BuyBuyReturn"
+                select new { m.STATUS, m.INSERTR, m.UPDATER, m.DELETER };
+    string status = "", insert = "", update = "", delete = "";
+    foreach (var S in query)
+    {
+        status = S.STATUS;
+        insert = S.INSERTR;
+        update = S.UPDATER;
+        delete = S.DELETER;
+    }
+
+    if (status == "I")
+    {
+        Response.Redirect("~/GraphView/Index");
+    }
+
+
+    if (delete == "A")
+    {
+
+    }
+    else if (update == "A")
+    {
+        Response.Redirect("~/BuyBuyReturn/Update");
+    }
+    else if (insert == "A")
+    {
+        Response.Redirect("~/BuyBuyReturn/Create");
+    }
+
+    if (delete == "I")
+    {
+        Response.Redirect("~/GraphView/Index");
+    }
+
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+    List<SelectListItem> listOfType = new List<SelectListItem>();
+    listOfType.Add(new SelectListItem { Text = "PURCHASE", Value = "BUY" });
+    listOfType.Add(new SelectListItem { Text = "PURCHASE RETURN", Value = "IRTB" });
+
+
+    string converttoString = Convert.ToString(currentDateTime.ToString("dd-MMM-yyyy"));
+    string getYear = converttoString.Substring(9, 2);
+    string getMonth = converttoString.Substring(3, 3).ToUpper();
+    string monthYear = getMonth + "-" + getYear;//DEC-15 (Example)
+
+}
+
+<link href="~/Content/bootstrap_datepicker_css/datepicker.css" rel="stylesheet" />
+<link href="~/Content/bootstrap_datepicker_css/datepicker3.css" rel="stylesheet" />
+<script src="/Scripts/bootstrap-datepicker.js"></script>
+
+<script src="~/Content/SweetAlert/sweetalert.min.js"></script>
+<link href="~/Content/SweetAlert/sweetalert.css" rel="stylesheet" />
+
+<link href="~/Content/newcss/ng-grid.css" rel="stylesheet" />
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+    <div id="contentHeaderBox">
+        @if (TempData["Buy/BuyReturn-Delete"] != "")
+        {
+            <h1 style="padding-left: 16px">Delete Buy/Buy-Return Info <span style="color: #FB000A; float: right;">@TempData["Buy/BuyReturn-Delete"]</span></h1>
+
+        }
+        else
+        {
+
+            <h1 style="padding-left: 16px">Delete Buy/Buy-Return Info</h1>
+        }
+
+
+        <div class="btn-group pull-right" id="editOption">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                <i class="fa fa-cog"></i>
+            </button>
+            <ul class="dropdown-menu pull-right" style="" role="menu">
+                @if (insert == 'A'.ToString() && update == 'A'.ToString() && delete == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Create", "BuyBuyReturn")"><i class="fa fa-plus"></i> Create</a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Update", "BuyBuyReturn")"><i class="fa fa-edit"></i> Update</a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Delete", "BuyBuyReturn")"><i class="fa fa-times"></i> Delete</a>
+                    </li>
+                }
+                else if (update == 'A'.ToString() && delete == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Update", "BuyBuyReturn")"><i class="fa fa-edit"></i> Update</a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Delete", "BuyBuyReturn")"><i class="fa fa-times"></i> Delete</a>
+                    </li>
+                }
+                else if (insert == 'A'.ToString() && update == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Create", "BuyBuyReturn")"><i class="fa fa-plus"></i> Create</a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Update", "BuyBuyReturn")"><i class="fa fa-edit"></i> Update</a>
+                    </li>
+                }
+                else if (insert == 'A'.ToString() && delete == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Create", "BuyBuyReturn")"><i class="fa fa-plus"></i> Create</a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("Delete", "BuyBuyReturn")"><i class="fa fa-times"></i> Delete</a>
+                    </li>
+                }
+                else if (insert == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Create", "BuyBuyReturn")"><i class="fa fa-plus"></i> Create</a>
+                    </li>
+                }
+                else if (update == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Update", "BuyBuyReturn")"><i class="fa fa-edit"></i> Update</a>
+                    </li>
+                }
+                else if (delete == 'A'.ToString())
+                {
+                    <li>
+                        <a href="@Url.Action("Delete", "BuyBuyReturn")"><i class="fa fa-times"></i> Delete</a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+
+    <div class="col-md-12">
+        <div class="form-group">
+            @Html.HiddenFor(model => model.COMPID, new { id = "txtcompid", @Value = LoggedCompId })
+            @Html.HiddenFor(model => model.INSUSERID, new { id = "txtInsertUserid", @Value = loggedUserID })
+            @Html.HiddenFor(model => model.Insert, new { id = "txt_Insertid", @Value = insert })
+            @Html.HiddenFor(model => model.Update, new { id = "txt_Updateid", @Value = update })
+            @Html.HiddenFor(model => model.Delete, new { id = "txt_Deleteid", @Value = delete })
+
+            @Html.HiddenFor(model => model.TRANSMY, new { id = "hiddentxt_TransMonthYear", @Value = monthYear, required = "true" })
+            @*@Html.HiddenFor(model => model.TRANSDT, new { id = "hiddentxt_TransactionDate", required = "true" })*@
+            @Html.HiddenFor(model => model.SUPPLIERID, new { id = "hiddentxt_SupplierID", required = "true" })
+            @Html.HiddenFor(model => model.DEPT_FR_TO, new { id = "hiddentxt_DepartmentFromTO", })
+            @*@Html.HiddenFor(model => model.PATIENTYYID, new { id = "hiddentxt_PatientYearID", required = "true" })
+                @Html.HiddenFor(model => model.PATIENTYY, new { id = "hiddentxt_PatientYear", required = "true" })*@
+            @Html.HiddenFor(model => model.INSLTUDE, new { id = "latlon" })
+            <input id="lat" type="hidden" />
+            <input id="lon" type="hidden" />
+
+            <div ng-app="BuyBuyReturnApp" data-ng-controller="ApiBuyBuyReturnController">
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="panel panel-primary" style="border: 1px solid transparent; border-radius: 0px; border-color: #e8e8e8; box-shadow: 0px 3px 9px #888888;">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <tr>
+                                        <td style="width: 10%"><label>Type</label></td>
+                                        <td style="width: 20%">@Html.DropDownListFor(model => model.TRANSTP, listOfType, new { id = "transactionType", @class = "form-control input-sm", @tabindex = "1", autofocus = "true" })</td>
+                                        <td style="width: 10%"><label>Date</label></td>
+                                        <td style="width: 10%">@Html.TextBoxFor(model => model.TRANSDT, new { id = "transactionDate", @class = "form-control input-sm", @Value = currentDateTime.ToString("dd-MMM-yyyy"), @tabindex = "2", required = "true" })</td>
+                                        <td style="width: 20%"><label style="margin-left: 13px;">Memo No</label></td>
+                                        <td style="width: 25%">@Html.TextBoxFor(model => model.TRANSNO, new { id = "transNO", @class = "form-control input-sm", @tabindex = "3", required = "true", @Style = "margin-left: -40px;"  })</td>
+                                        <td style="width: 5%" id="searchbutton_divid"><input id="SearchButtonID" type="submit" value="Search" data-ng-click="search($event)" class="btn btn-info" tabindex="4" /></td>
+                                        <td style="width: 5%" id="1stRowDiv"><input type="submit" class="btn btn-default" value="Refresh" name="command" /></td>
+                                    </tr>
+                                    @*<tr>
+                                        <td class="col-sm-1"><label>Type</label></td>
+                                        <td class="col-sm-3" style="width: 12%">@Html.DropDownListFor(model => model.TRANSTP, listOfType, new { id = "transactionType", @class = "form-control input-sm", @tabindex = "1", autofocus = "true" })</td>
+                                        <td class="col-sm-1"><label style="margin-left: 46px;">Date</label></td>
+                                        <td class="col-sm-3">@Html.TextBoxFor(model => model.TRANSMY_Update, new { id = "transaction_MonthYear_Update", @class = "form-control input-sm", @Value = currentDateTime.ToString("MMM-yyyy"), @Style = "width:  42%;    margin-left: 22px;", @tabindex = "2", required = "true" })</td>
+                                        <td class="col-sm-1"><label style="margin-left: -134px;">Memo No</label></td>
+                                        <td class="col-sm-2">@Html.TextBoxFor(model => model.TRANSNO, new { id = "transNO", @class = "form-control input-sm", @tabindex = "3", required = "true", @Style = "margin-left: -49px;" })</td>
+                                        <td class="col-sm-1" id="searchbutton_divid"><input id="SearchButtonID" type="submit" value="Search" data-ng-click="search($event)" class="btn btn-info" tabindex="4" /></td>
+                                        <td class="col-sm-1" id="1stRowDiv"></td>
+                                    </tr>*@
+                                </table>
+                                <table class="table table-striped">
+                                    <tr>
+                                        <td style="width: 10%"><label>Supplier </label></td>
+                                        <td style="width: 39%">@Html.TextBoxFor(model => model.SupplierName, new { id = "supplierName", @class = "form-control input-sm", @tabindex = "-1", required = "true", @readonly = "true", @Style = "margin-left: -4px;" })</td>
+                                        <td style="width: 15%">@Html.LabelFor(model => model.DEPT_FR_TO, htmlAttributes: new { id = "LevelDepartment", @class = "control-label" ,@Style = "margin-left: 4px;"  })</td>
+                                        <td style="width: 36%">@Html.TextBoxFor(model => model.DepartmentName, new { id = "departmentName", @class = "form-control input-sm", @tabindex = "-1", @readonly = "true", })</td>
+                                    </tr>
+                                    @*<tr>
+                                        <td class="col-sm-1"><label>Supplier </label></td>
+                                        <td class="col-sm-5" style=" padding-right: 30px;padding-left: 20px">@Html.TextBoxFor(model => model.SupplierName, new { id = "supplierName", @class = "form-control input-sm", @tabindex = "-1", required = "true", @readonly = "true", })</td>
+                                        <td class="col-sm-2" style="padding-left: 0px">@Html.LabelFor(model => model.DEPT_FR_TO, htmlAttributes: new { id = "LevelDepartment", @class = "control-label" })</td>
+                                        <td class="col-sm-4">@Html.TextBoxFor(model => model.DepartmentName, new { id = "departmentName", @class = "form-control input-sm", @tabindex = "-1", @readonly = "true", })</td>
+                                    </tr>*@
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="row" id="Get_Buy_BuyReturn_Info">
+                    <div class="col-md-9">
+                        <div class="well" style="box-shadow: 0px 3px 9px #888888;">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <tr>
+                                        <td @*class="col-md-1"*@ style="text-align: left; width: 5%"><label>SL</label></td>
+                                        <td @*class="col-md-4"*@ style="text-align: left; width: 55%"><label>Item Name</label></td>
+                                        <td @*class="col-md-2"*@ style="text-align: left; width: 10%"><label>Qty</label></td>
+                                        <td @*class="col-md-2"*@ style="text-align: left; width: 10%"><label>Rate</label></td>
+                                        <td @*class="col-md-2"*@ style="text-align: right; width: 15%"><label>Amount</label></td>
+                                        <td @*class="col-md-1"*@ style="width: 5%"></td>
+                                    </tr>
+                                    <tr data-ng-repeat="testitem in BuyBuyReturnData">
+                                        <td hidden>
+                                            <p data-ng-hide="testitem.editMode">{{testitem.ID}}</p>
+                                        </td>
+                                        <td hidden>
+                                            <p data-ng-hide="testitem.editMode">{{testitem.COMPID}}</p>
+                                        </td>
+                                        <td hidden>
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.TRANSTP }}</p>
+                                        </td>
+                                        <td hidden>
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.TRANSMY }}</p>
+                                        </td>
+                                        <td hidden>
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.TRANSNO }}</p>
+                                        </td>
+                                        <td hidden>
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.MEDIID }}</p>
+                                        </td>
+
+                                        <td @*class="col-md-1"*@ style="width:5%">
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.ITEMSL }}</p>
+                                            <input class="form-control input-sm" data-ng-show="testitem.editMode" type="text" data-ng-model="testitem.ITEMSL" id="gridItemSLid" readonly="readonly" />
+                                        </td>
+                                        <td @*class="col-md-4"*@ style="width:55%">
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.MEDINM }}</p>
+                                            <input class="form-control input-sm" data-ng-show="testitem.editMode" type="text" data-ng-model="testitem.MEDINM" id="gridMediNameID" readonly="readonly" />
+                                        </td>
+                                        <td @*class="col-md-2"*@ style="width:10%">
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.QTY }}</p>
+                                            @Html.TextBoxFor(model => model.QTY, new { type = "number", id = "gridQtyID", data_ng_show = "testitem.editMode", data_ng_model = "testitem.QTY", @class = "form-control input-sm gridQty", ng_change = "quantity(testitem.QTY)", @min = "0", @max = "999999999999999", placeholder = "0" })
+                                            @*<input type="number" data-ng-model="testitem.QTY" class="form-control input-sm gridQty" data-ng-show="testitem.editMode"  ng-chance="quantity(testitem.QTY)" min="0" max="999999999999999" placeholder="0" />*@
+                                        </td>
+                                        <td @*class="col-md-2"*@ style="width:10%">
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.RATE }}</p>
+                                            @Html.TextBoxFor(model => model.RATE, new { type = "number", id = "gridRateID", data_ng_show = "testitem.editMode", data_ng_model = "testitem.RATE", @class = "form-control input-sm gridRate", ng_change = "rate(testitem.RATE)", @min = "0", @max = "999999999999999", placeholder = "0" })
+                                            @*<input class="form-control input-sm gridRate" data-ng-show="testitem.editMode" type="number" data-ng-model="testitem.RATE" id="gridRateID" min="0" max="999999999999999" placeholder="0" ng-chance="rate(testitem.RATE)" />*@
+                                        </td>
+                                        <td @*class="col-md-2"*@ style="text-align: right; width: 15%">
+                                            <p data-ng-hide="testitem.editMode">{{ testitem.AMOUNT }}</p>
+                                            @*@Html.TextBoxFor(model => model.AMOUNT, new { type = "number", id = "gridAmountID", data_ng_show = "testitem.editMode", data_ng_model = "testitem.AMOUNT", @class = "form-control input-sm gridAmount", ng_change = "amount(testitem.AMOUNT)", @min = "0", @max = "999999999999999", placeholder = "0" })*@
+                                            <input class="form-control input-sm gridAmount" data-ng-show="testitem.editMode" type="number" data-ng-model="testitem.AMOUNT" id="gridAmountID" min="0" max="999999999999999" placeholder="0" ng-chance="amount(testitem.AMOUNT)" readonly="readonly" />
+                                        </td>
+                                        <td @*class="col-md-1"*@ style="text-align: right; width: 5%">
+                                            <p data-ng-hide="testitem.editMode">
+                                                @*<a data-ng-click="toggleEdit(testitem)" href="javascript:;"><span class="btn btn-warning btn-xs glyphicon glyphicon-edit"></span></a> |*@ <a data-ng-click="deleteItem(testitem)" href="javascript:;"><span class="btn btn-warning btn-xs glyphicon glyphicon-trash"></span></a>
+                                            </p>
+                                            @*<p data-ng-show="testitem.editMode">
+                                                    <a data-ng-click="update(testitem)" href="javascript:;"><span class="btn btn-warning btn-xs glyphicon glyphicon-ok"></span></a> | <a data-ng-click="toggleEdit_Cancel(testitem)" href="javascript:;"><span class="btn btn-warning btn-xs glyphicon glyphicon-remove"></span></a>
+                                                </p>*@
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td @*class="col-md-1"*@ style="width: 5%"></td>
+                                        <td @*class="col-md-4"*@ style="width: 55%"></td>
+                                        <td @*class="col-md-2"*@ style="width: 10%"></td>
+                                        <td @*class="col-md-2"*@ style="width: 10%"><b>Total:</b></td>
+                                        <td @*class="col-md-2"*@ id="gridTotalAmount" style="text-align: right; font-weight: bold;width:15%">{{GetSummOfAmount(BuyBuyReturnData)}}</td>
+                                        <td @*class="col-md-1"*@ style="width: 5%"></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3" style="padding-left: 0px;">
+                        <div class="panel panel-primary" style="margin-bottom: 0px">
+                            <div class="panel-heading">Payment Information</div>
+                        </div>
+                        <div class="well">
+                            <div class="row">
+                                <div class="col-md-12">Total Amount</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">@Html.TextBoxFor(model => model.TOTAMT, new { @class = "form-control input-sm", @style = "text-align:right", id = "txtMst_TotalAmount", @readonly = "readonly", @Value = 0 })</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">Vat Amount</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">@Html.TextBoxFor(model => model.VATAMT, new { @class = "form-control input-sm", @style = "text-align:right", id = "txtMst_VatAmount", @Value = 0, @readonly = "readonly" })</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">Discount</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">@Html.TextBoxFor(model => model.DISCOUNT, new { @class = "form-control input-sm", @style = "text-align:right", id = "txtMst_DiscAmt", @Value = 0, @readonly = "readonly" })</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">Net Amount</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">@Html.TextBoxFor(model => model.NETAMT, new { @class = "form-control input-sm", @style = "text-align:right", id = "txtMst_NetAmount", @Value = 0, @readonly = "readonly" })</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">Remarks</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">@Html.TextAreaFor(model => model.REMARKS, new { @class = "form-control input-sm", @style = "text-align:left", id = "txtMst_Remarks", @readonly = "readonly" })</div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <input type="submit" id="btnDelete" class="btn btn-danger" value="Delete" name="command" tabindex="5" />
+                                </div>
+                                <div class="col-md-5">
+                                    <input type="submit" id="btnRefresh" class="btn btn-success" value="Refresh" name="command" tabindex="6" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlon").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+    </script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $('#1stRowDiv').hide();
+            //Grid and card level Field
+            $('#Get_Buy_BuyReturn_Info').hide();
+            $('#SearchButtonID').click(function () {
+                var supplierName = $('#supplierName').val();
+                var departmentName = $('#departmentName').val();
+                if (supplierName != "" && departmentName != "") {
+                    $('#Get_Buy_BuyReturn_Info').show();
+                    $('#searchbutton_divid').hide();
+                    $('#1stRowDiv').show();
+
+                    //Disabled required field when select insert button.
+                    $("#transactionType").prop("disabled", true);
+                    $("#transactionDate").prop("disabled", true);
+                    $("#transNO").prop("disabled", true);
+                }
+            });
+
+
+            //right before the form submits, we re-enable the fields, to make them submit.
+            $("#btnDelete").click(function () {
+                $('#transactionType').prop("disabled", false);
+                $('#transactionDate').prop("disabled", false);
+                $('#transNO').prop("disabled", false);
+
+
+            });
+
+
+            //$("#btnRefresh").click(function () {
+
+            //    swal({
+            //        title: "Are you sure?",
+            //        text: "You will not be able to recover this imaginary file!",
+            //        type: "warning",
+            //        showCancelButton: true,
+            //        confirmButtonColor: "#DD6B55",
+            //        confirmButtonText: "Yes, delete it!",
+            //        cancelButtonText: "No, cancel plz!",
+            //        closeOnConfirm: false,
+            //        closeOnCancel: false
+            //    }, function (isConfirm) {
+            //        if (isConfirm) {
+            //            swal("Deleted!", "Your imaginary file has been deleted.", "success");
+            //        } else {
+            //            swal("Cancelled", "Your imaginary file is safe :)", "error");
+            //        }
+            //    });
+            //});
+
+
+
+
+
+
+
+
+            $('#LevelDepartment').text('Department To');
+
+            $('#transactionType').change(function () {
+
+                var changedtxt = $('#transactionType option:selected').val();
+                if (changedtxt == "BUY") {
+                    $('#LevelDepartment').text('Department To');
+                } else if (changedtxt == "IRTB") {
+                    $('#LevelDepartment').text('Department From');
+                }
+
+                $("#transNO").val("");
+                //$("#hiddentxt_TransactionDate").val("");
+                $("#hiddentxt_DepartmentFromTO").val("");
+                $("#hiddentxt_SupplierID").val("");
+                //$("#hiddentxt_PatientYearID").val("");
+                //$("#hiddentxt_PatientYear").val("");
+                //$("#patientType").val("");
+                $("#supplierName").val("");
+                $("#departmentName").val("");
+                //$("#patientId").val("");
+                //$("#patientName").val("");
+                document.getElementById("transactionDate").focus();
+            });
+
+
+
+
+            $("#transactionDate").datepicker({
+                dateFormat: 'dd-M-yy',
+                changeYear: true,
+                changeMonth: true,
+                onSelect: function (datetxt, instance) {
+                    var changedText = $('#transactionDate').val();
+
+                    var monthYear = document.getElementById('hiddentxt_TransMonthYear');
+                    $("#txtYear").val(" ");
+                    $.getJSON(
+                        "/BuyBuyReturn/GetMonthYear", { "ChangedText": changedText },
+                        function (myData) {
+                            monthYear.value = myData.TRANSMY;
+                        });
+
+
+                    $("#transNO").val("");
+                    //$("#hiddentxt_TransactionDate").val("");
+                    $("#hiddentxt_DepartmentFromTO").val("");
+                    $("#hiddentxt_SupplierID").val("");
+                    //$("#hiddentxt_PatientYearID").val("");
+                    //$("#hiddentxt_PatientYear").val("");
+                    //$("#patientType").val("");
+                    $("#supplierName").val("");
+                    $("#departmentName").val("");
+                    //$("#patientId").val("");
+                    //$("#patientName").val("");
+
+                    document.getElementById("transNO").focus();
+                }
+            });
+
+
+
+            //$('#transaction_MonthYear_Update').datepicker({
+            //    changeMonth: true,
+            //    changeYear: true,
+            //    showButtonPanel: true,
+            //    dateFormat: 'M-yy'
+            //}).focus(function () {
+            //    var thisCalendar = $(this);
+            //    $('.ui-datepicker-calendar').detach();
+            //    $('.ui-datepicker-close').click(function () {
+            //        var month = $("#ui-datepicker-div .ui-datepicker-month :selected").val();
+            //        var year = $("#ui-datepicker-div .ui-datepicker-year :selected").val();
+            //        thisCalendar.datepicker('setDate', new Date(year, month, 1));
+
+            //        $("#transNO").val("");
+            //        //$("#hiddentxt_TransactionDate").val("");
+            //        $("#hiddentxt_DepartmentFromTO").val("");
+            //        $("#hiddentxt_SupplierID").val("");
+            //        //$("#hiddentxt_PatientYearID").val("");
+            //        //$("#hiddentxt_PatientYear").val("");
+            //        //$("#patientType").val("");
+            //        $("#supplierName").val("");
+            //        $("#departmentName").val("");
+            //        //$("#patientId").val("");
+            //        //$("#patientName").val("");
+
+            //        var changedText = $('#transaction_MonthYear_Update').val();
+
+            //        var monthYear = document.getElementById('hiddentxt_TransMonthYear');
+            //        $("#txtYear").val(" ");
+            //        $.getJSON(
+            //            "/BuyBuyReturn/GetMonthYear", { "ChangedText": changedText },
+            //            function (myData) {
+            //                monthYear.value = myData.TRANSMY;
+            //            });
+            //    });
+            //});
+
+
+
+            //MemoNO Field
+            $('#transNO').autocomplete({
+                source: function (request, response) {
+                    $.ajax({
+                        url: '/BuyBuyReturn/TagSearch_transNO',
+                        type: 'GET',
+                        cache: false,
+                        dataType: "json",
+                        data: {
+                            term: request.term,
+                            compid: $('#txtcompid').val(),
+                            transactionType: $('#transactionType option:selected').val(),
+                            transactionDate: $('#transactionDate').val()
+                        },
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item,
+                                    value: item
+                                };
+                            }));
+                        }
+                    });
+                },
+                change: $('#transNO').keyup(_.debounce(txtOneChangedMemoNO, 500)),
+                select: function (event, ui) {
+                    $("#transNO").val(ui.item.label);
+                    txtOneChangedMemoNO();
+                }
+            });
+
+            function txtOneChangedMemoNO() {
+
+                var changedText = $("#transNO").val();
+                var companyid = $('#txtcompid').val();
+                var transactionType = $("#transactionType option:selected").val();
+                var transactionDate = $('#transactionDate').val();
+
+                var txtBox = document.getElementById('transNO');
+                //var hiddentxt_TransactionDate = document.getElementById('hiddentxt_TransactionDate');
+                var hiddentxt_departmentFromTO = document.getElementById('hiddentxt_DepartmentFromTO');
+                //var hiddentxt_PatientYearID = document.getElementById('hiddentxt_PatientYearID');
+                //var hiddentxt_PatientYear = document.getElementById('hiddentxt_PatientYear');
+                //var patientType = document.getElementById('patientType');
+                var departmentName = document.getElementById('departmentName');
+                //var patientId = document.getElementById('patientId');
+                //var patientName = document.getElementById('patientName');
+
+
+                if (changedText != "") {
+                    $.getJSON(
+                        '/BuyBuyReturn/keyword_GetTransNO', { "ChangedText": changedText, "Companyid": companyid, "TransactionType": transactionType, "TransactionDate": transactionDate },
+                        function (myData) {
+                            txtBox.value = myData.TRANSNO;
+                            //hiddentxt_TransactionDate.value = myData.TRANSDT;
+                            hiddentxt_departmentFromTO.value = myData.DEPT_FR_TO;
+                            hiddentxt_SupplierID.value = myData.SUPPLIERID;
+                            //hiddentxt_PatientYearID.value = myData.PATIENTYYID;
+                            //hiddentxt_PatientYear.value = myData.PATIENTYY;
+                            //patientType.value = myData.PATIENTTP;
+                            supplierName.value = myData.SupplierName;
+                            departmentName.value = myData.DepartmentName;
+                            //patientId.value = myData.PATIENTID;
+                            //patientName.value = myData.PatientName;
+
+                        });
+                }
+
+                //$("#hiddentxt_TransactionDate").val("");
+                $("#hiddentxt_DepartmentFromTO").val("");
+                $("#hiddentxt_SupplierID").val("");
+                //$("#hiddentxt_PatientYearID").val("");
+                //$("#hiddentxt_PatientYear").val("");
+                //$("#patientType").val("");
+                $("#supplierName").val("");
+                $("#departmentName").val("");
+                //$("#patientId").val("");
+                //$("#patientName").val("");
+            }
+
+
+        });
+    </script>
+
+
+    <style type="text/css">
+        .ui-autocomplete {
+            position: absolute;
+            cursor: default;
+            background: #f0ffff;
+            max-height: 200px;
+            overflow-y: auto;
+            /* prevent horizontal scrollbar */
+            overflow-x: hidden;
+            /* add padding to account for vertical scrollbar */
+            padding-right: 20px;
+        }
+    </style>
+
+}
+
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+@*<script src="~/Content/jquery-2.1.4/jquery-2.1.4.min.js"></script>*@
+<script src="~/Scripts/jquery-1.9.1.min.js"></script>
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+
+
+<script src="~/Scripts/angularjs/1.0.5/angular.js"></script>
+<script src="~/Scripts/Buy_BuyReturn/Buy_BuyReturn_Delete.js"></script>
+<script src="~/Scripts/angularjs/ui-bootstrap-tpls-0.4.0.js"></script>
+
+<script src="~/Scripts/Underscore.js"></script>

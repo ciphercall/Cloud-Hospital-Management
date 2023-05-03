@@ -1,0 +1,480 @@
+﻿@using AslHMS.Models
+@model AslHMS.Models.DTO.PatientConsultDTO
+
+@{
+    ViewBag.Title = "Index";
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    var InUserId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedUserID"]);
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+    var LoggedCompId = HttpContext.Current.Session["loggedCompID"].ToString();
+    Int64 compid = Convert.ToInt64(LoggedCompId);
+
+    AslHMSApiContext db = new AslHMSApiContext();
+
+
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+    string date=currentDateTime.ToString("yyyy-MM-dd");
+    string year = date.Substring(0, 4);
+
+  
+    List<SelectListItem> listcabintype = new List<SelectListItem>();
+    listcabintype.Add(new SelectListItem { Text = "PATIENT", Value = "PATIENT" });
+    listcabintype.Add(new SelectListItem { Text = "RELATIVE", Value = "RELATIVE" });
+
+    List<SelectListItem> listcabinHead = new List<SelectListItem>();
+    var findheadname = (from n in db.HMS_HEADIO where n.COMPID == compid && n.HEADTP == "ICB" select n).ToList();
+    foreach (var item in findheadname)
+    {
+        listcabinHead.Add(new SelectListItem { Text = item.HEADNM, Value = Convert.ToString(item.HEADID) });
+    }
+}
+
+<link href="~/Content/newcss/jquery-ui.css" rel="stylesheet" />
+
+
+<link href="~/Content/newcss/ng-grid.css" rel="stylesheet" />
+<link rel="stylesheet" href="~/Content/style.css" />
+<link href="~/Content/bootstrap_datepicker_css/datepicker.css" rel="stylesheet" />
+<link href="~/Content/bootstrap_datepicker_css/datepicker3.css" rel="stylesheet" />
+
+
+
+
+<script src="~/Content/jquery1.8.0/jquery.min.js"></script>
+
+
+<script src="~/Content/jquery1.9.1/jquery-1.9.1.js"></script>
+
+
+<script src="~/Content/jquery1.10.3/jquery-ui.js"></script>
+
+
+
+
+@using (Html.BeginForm())
+{
+
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+
+    <div id="contentHeaderBox">
+        <h1 style="padding-left:16px">Patient - Consultant Information</h1>
+
+        <div class="btn-group pull-right" id="editOption">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                <i class="fa fa-cog"></i>
+            </button>
+            <ul class="dropdown-menu pull-right" style="" role="menu">
+
+                <li>
+                    <a href="@Url.Action("Index", "PatientConsult")"><i class="fa fa-plus"></i> Create</a>
+                </li>
+                @*<li>
+                        <a href="@Url.Action("Update", "Opd")"><i class="fa fa-edit"></i> Update</a>
+                    </li>*@
+                @*<li>
+                        <a href="@Url.Action("Delete", "JobInformation")"><i class="fa fa-times"></i> Delete</a>
+                    </li>*@
+
+            </ul>
+        </div>
+
+    </div>
+    <div class="col-md-12">
+        <div class="form-group">
+            @Html.HiddenFor(model => model.COMPID, new { id = "txtcompid", style = "width:3em;", @Value = compid })
+
+            @Html.HiddenFor(model => model.INSUSERID, new { id = "InUserID", style = "width:5em;", @Value = InUserId })
+
+            <div ng-app="PatientConsultApp" data-ng-controller="ApiPatientConsultController">
+
+                <div class="row">
+                    @Html.HiddenFor(model => model.COMPID, new { id = "txtcompid", style = "width:3em;", @Value = compid })
+
+                    <div class="col-md-1">
+                        <label>Year</label>
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientYear, new { @class = "form-control input-sm", id = "PatientYear", @Value = year })
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Type</label>
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientType, new { @class = "form-control input-sm", id = "PatientType", @readonly = "true", @Value = "INDOOR" })
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Patient YearID</label>
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientYearId, new { id = "PatientYearId", @class = "form-control", autofocus = "true" })
+                        </span>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Patient Name</label>
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientName, new { id = "PatientName", @class = "form-control", @readonly = "true", tabindex = "-1" })
+                        </span>
+                    </div>
+                    @*<div class="col-md-2">
+                        <label>Transaction Date</label>
+                        <span>
+                            @Html.TextBoxFor(model => model.TransactionDate, new { id = "TransactionDate", @class = "form-control" })
+                        </span>
+                    </div>*@
+                    <div class="col-md-2">
+
+                        <input style="margin-top: 22px" type="submit" value="Submit" data-ng-click="add($event)" class="btn btn-primary" id="submit" />
+
+
+                    </div>
+                    @Html.TextBoxFor(model => model.INSLTUDE, new { id = "latlonPos", style = "display: none;" })
+                    <input id="lat" type="hidden" />
+                    <input id="lon" type="hidden" />
+
+
+
+                </div>
+
+                <br /><br />
+
+                <table class="table table-bordered table-hover col-md-12">
+
+                    <tr>
+
+                        <td class="col-md-2"><label>Transaction Date</label></td>
+                        <td class="col-md-4"><label>Doctor Name</label></td>
+                        <td class="col-md-2"><label>Amount</label></td>
+                       
+                        <td class="col-md-2"><label>Remarks</label></td>
+                        <td class="col-md-2"></td>
+
+
+                    </tr>
+                    <tr>
+                       
+                       
+                        @Html.TextBoxFor(model => model.DoctorId, new { data_ng_model = "newChild.DoctorId", @class = "form-control", id = "DoctorId" })
+                        <td class="col-md-2">
+                            @Html.TextBoxFor(model => model.TransactionDate, new { data_ng_model = "newChild.TransactionDate", @class = "form-control", id = "TransactionDate" })
+
+                        </td>
+                        <td class="col-md-4">
+                            @Html.TextBoxFor(model => model.DoctorName, new { data_ng_model = "newChild.DoctorName", @class = "form-control", id = "DoctorName" })
+
+                        </td>
+                        <td class="col-md-2">
+                            @Html.TextBoxFor(model => model.Amount, new { data_ng_model = "newChild.Amount", @class = "form-control", id = "Amount" })
+
+                        </td>
+                        <td class="col-md-2">
+                            @Html.TextBoxFor(model => model.Remarks, new { data_ng_model = "newChild.Remarks", @class = "form-control", id = "Remarks" })
+
+
+                        </td>
+                      
+                      
+                        <td class="col-md-2"><input type="submit" value="Insert" data-ng-click="addrow($event)" class="btn btn-primary" /></td>
+
+
+
+                    </tr>
+                 
+                    <tr data-ng-repeat="item in PConsultData">
+                        <td hidden><strong data-ng-hide="item.editMode">{{item.ID}}</strong></td>
+                        <td hidden><strong data-ng-hide="item.editMode">{{item.TransSerial}}</strong></td>
+                        <td hidden><strong data-ng-hide="item.editMode">{{item.DoctorId}}</strong></td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.TransactionDate }}</p>
+                            @*@Html.DropDownListFor(model => model.CabinType, listcabintype, new { data_ng_show = "item.editMode", data_ng_model = "item.CabinType", @class = "form-control", id = "gridCabinType" })*@
+
+                        </td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.DoctorName }}</p>
+                            @Html.TextBoxFor(model => model.DoctorName, new { data_ng_show = "item.editMode", data_ng_model = "item.DoctorName", @class = "form-control gridDoctorName", ng_change = "x(item.DoctorName)" })
+
+                        </td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.Amount }}</p>
+                            @Html.TextBoxFor(model => model.Amount, new { data_ng_show = "item.editMode", data_ng_model = "item.Amount", @class = "form-control", id = "gridAmount" })
+
+                        </td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.Remarks }}</p>
+
+                            @Html.TextBoxFor(model => model.Remarks, new { data_ng_show = "item.editMode", data_ng_model = "item.Remarks", @class = "form-control", id = "gridRemarks" })
+                        </td>
+                       
+                     
+
+                        <td>
+                            <p data-ng-hide="item.editMode"><a data-ng-click="toggleEdit(item)" href="javascript:;">Edit</a> | <a data-ng-click="deleteitem(item)" href="javascript:;">Delete</a></p>
+                            <p data-ng-show="item.editMode"><a data-ng-click="save(item)" href="javascript:;">Save</a> | <a data-ng-click="cancel()" href="javascript:;">Cancel</a></p>
+
+                        </td>
+                    </tr>
+                </table>
+
+
+            </div>
+
+
+
+        </div>
+    </div>
+
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false">
+    </script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlonPos").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+                $("#latlonRms").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+    </script>
+
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#PatientYearId').autocomplete({
+                source: function (request, response) {
+                    var compid = $('#txtcompid').val();
+                    var year = $('#PatientYear').val();
+                    $.ajax({
+                        url: '/api/apiPatinetConsult/PatientYID',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: compid,Year:year },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item,
+                                    value: item,
+
+
+                                };
+                            }));
+                        }
+                    });
+                },
+                select: function (event, ui) {
+                    $('#PatientYearId').val(ui.item.label);
+
+
+                    txtOneChanged();
+
+                },
+                change: $('#PatientYearId').keyup(_.debounce(txtOneChanged, 1000))
+            });
+
+
+            $('#DoctorName').autocomplete({
+                source: function (request, response) {
+                    var compid = $('#txtcompid').val();
+                 
+                    $.ajax({
+                        url: '/apiPatinetConsult/DoctorName',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: compid},
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item[0].DoctorName,
+                                    value: item[0].DoctorName,
+                                    id:item[0].DoctorId
+
+                                };
+                            }));
+                        }
+                    });
+                },
+                select: function (event, ui) {
+                    $('#DoctorName').val(ui.item.label);
+
+                    $('#DoctorId').val(ui.item.id);
+                    txtOneChanged2();
+
+                },
+                change: $('#DoctorName').keyup(_.debounce(txtOneChanged2, 1000))
+            });
+
+            $('#TransactionDate').datepicker({
+                format: "dd-M-yyyy",
+                autoclose: true,
+                todayHighlight: true,
+                showOnFocus: true,
+            }).on('show', function (e) {
+                if (e.date) {
+                    $(this).data('stickyDate', e.date);
+                } else {
+                    $(this).data('stickyDate', null);
+
+                }
+            }).on('hide', function (e) {
+                var stickyDate = $(this).data('stickyDate');
+
+                if (!e.date && stickyDate) {
+                    $(this).datepicker('setDate', stickyDate);
+                    $(this).data('stickyDate', null);
+                }
+                
+            });
+
+          
+            $("#PatientYear").datepicker({
+                format: "yyyy", // Notice the Extra space at the beginning
+                viewMode: "years",
+                minViewMode: "years",
+                autoclose:true
+            });
+
+          
+
+
+
+        });
+
+
+
+        function txtOneChanged() {
+
+
+            var changedText = $("#PatientYearId").val();
+            var changedText2 = $('#txtcompid').val();
+            var year = $('#PatientYear').val();
+
+            //var Name = document.getElementById('PatientYearID');
+            var txtBox = document.getElementById('PatientYearId');
+
+            var txtBox2 = document.getElementById('PatientName');
+
+            if (changedText != "") {
+
+                $.getJSON(
+                    '/api/apiPatinetConsult/DynamicPatinetYearId', {
+                        "ChangedText": changedText, "ChangedText2": changedText2, "Year":year
+            },
+                    function (result) {
+                     
+                        txtBox.value = result;
+
+
+
+
+
+
+                    });
+                $.getJSON(
+                    '/api/PatientName', { "ChangedText": changedText, "ChangedText2": changedText2 },//apiCabinBed
+                    function (result) {
+                      
+                        txtBox2.value = result;
+
+
+
+
+
+
+                    });
+            }
+
+
+
+        }
+
+
+        function txtOneChanged2() {
+
+
+            var changedText = $("#DoctorName").val();
+            var changedText2 = $('#txtcompid').val();
+
+            var Name = document.getElementById('DoctorName');
+            var txtBox = document.getElementById('DoctorId');
+
+
+
+            if (changedText != "") {
+
+                $.getJSON(
+                    '/apiPatientConsult/DynamicDoctor', { "ChangedText": changedText, "ChangedText2": changedText2 },
+                    function (result) {
+                 Name.value=result[0].DoctorName,
+                        txtBox.value = result[0].DoctorId;
+
+
+
+
+
+
+                    });
+             
+            }
+
+
+
+        }
+
+
+
+    </script>
+
+
+}
+
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+<script src="~/Scripts/bootstrap-datepicker.js"></script>
+
+<script src="~/Scripts/angularjs/1.0.5/angular.js"></script>
+
+
+<script src="~/Scripts/PatientConsult/PatientConsult.js"></script>
+
+<script src="~/Scripts/angularjs/ui-bootstrap-tpls-0.4.0.js"></script>
+
+
+
+
+<script src="~/Scripts/Underscore.js"></script>

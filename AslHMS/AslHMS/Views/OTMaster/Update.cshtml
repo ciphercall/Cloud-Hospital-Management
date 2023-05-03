@@ -1,0 +1,805 @@
+﻿@using AslHMS.Models
+@model AslHMS.Models.DTO.OTMasterDTO
+
+@{
+    ViewBag.Title = "Index";
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    var InUserId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedUserID"]);
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+    var LoggedCompId = HttpContext.Current.Session["loggedCompID"].ToString();
+    Int64 compid = Convert.ToInt64(LoggedCompId);
+
+    AslHMSApiContext db = new AslHMSApiContext();
+
+    List<SelectListItem> listtype = new List<SelectListItem>();
+
+
+    listtype.Add(new SelectListItem { Text = "INDOOR", Value = "INDOOR" });
+    listtype.Add(new SelectListItem { Text = "OUTDOOR", Value = "OUTDOOR" });
+
+    List<SelectListItem> gender = new List<SelectListItem>();
+
+
+    gender.Add(new SelectListItem { Text = "Male", Value = "Male" });
+    gender.Add(new SelectListItem { Text = "Female", Value = "Female" });
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+    string current_Year = Convert.ToString(currentDateTime.ToString("yyyy"));
+    Int64 transYear = Convert.ToInt64(current_Year);
+
+
+
+
+
+
+
+    List<SelectListItem> listofOTPTP = new List<SelectListItem>();
+    listofOTPTP.Add(new SelectListItem { Text = "SURGEON", Value = "SURGEON" });
+    listofOTPTP.Add(new SelectListItem { Text = "ANESTHESIOLOGIST", Value = "ANESTHESIOLOGIST" });
+    listofOTPTP.Add(new SelectListItem { Text = "ASSISTANT", Value = "ASSISTANT" });
+    listofOTPTP.Add(new SelectListItem { Text = "OTCHARGE", Value = "OTCHARGE" });
+
+}
+
+
+
+@*<link href="~/Content/newcss/jquery-ui.css" rel="stylesheet" />
+
+
+    <link href="~/Content/newcss/ng-grid.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/Content/style.css" />*@
+
+<link href="~/Content/bootstrap_datepicker_css/datepicker.css" rel="stylesheet" />
+<link href="~/Content/bootstrap_datepicker_css/datepicker3.css" rel="stylesheet" />
+
+
+
+<link href="~/Content/bootstrap-3.2.0-dist/css/bootstrap-theme.css" rel="stylesheet" />
+<script src="~/Content/bootstrap-3.2.0-dist/js/bootstrap.js"></script>
+@*bootstrap -Clock Picker*@
+<link href="~/Content/bootstrap_clock_picker/src/clockpicker.css" rel="stylesheet" />
+<script src="~/Content/bootstrap_clock_picker/src/clockpicker.js"></script>
+<link href="~/Content/bootstrap_clock_picker/src/standalone.css" rel="stylesheet" />
+
+@*<script src="~/Content/jquery1.8.0/jquery.min.js"></script>
+
+
+    <script src="~/Content/jquery1.9.1/jquery-1.9.1.js"></script>
+
+
+    <script src="~/Content/jquery1.10.3/jquery-ui.js"></script>*@
+
+
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+    <div id="contentHeaderBox">
+        <h1 style="padding-left:16px">O.T. Information - Update</h1>
+
+        <div class="btn-group pull-right" id="editOption">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                <i class="fa fa-cog"></i>
+            </button>
+            <ul class="dropdown-menu pull-right" style="" role="menu">
+
+                <li>
+                    <a href="@Url.Action("Index", "OTMaster")"><i class="fa fa-plus"></i> Create</a>
+                </li>
+                <li>
+                    <a href="@Url.Action("Update", "OTMaster")"><i class="fa fa-edit"></i> Update</a>
+                </li>
+                @*<li>
+                        <a href="@Url.Action("Delete", "JobInformation")"><i class="fa fa-times"></i> Delete</a>
+                    </li>*@
+
+            </ul>
+        </div>
+
+    </div>
+    @*<br />*@
+
+    <div class="col-md-12">
+        <div class="form-group">
+            @Html.HiddenFor(model => model.COMPID, new { id = "txtcompid", style = "width:3em;", @Value = compid })
+
+            @Html.HiddenFor(model => model.INSUSERID, new { id = "InUserID", style = "width:5em;", @Value = InUserId })
+            @Html.HiddenFor(model => model.OPHID, new { id = "OPHID", style = "width:3em;" })
+            @Html.HiddenFor(model => model.TransYear, new { id = "TransYear", @class = "form-control", @readonly = "true", @Value = current_Year, tabindex = "-1" })
+
+            <div ng-app="OTApp" data-ng-controller="ApiOTMasterController">
+                <div class="row">
+                    @*@Html.HiddenFor(model => model.COMPID, new { id = "txtcompid", style = "width:3em;", @Value = compid })*@
+
+                    <div class="col-md-2">
+                        <label>Entry Date</label>
+
+                    </div>
+
+                    <div class="col-md-2">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.TransactionDate, new { @class = "form-control input-sm", id = "TransactionDate", @Value = currentDateTime.ToString("dd-MMM-yyyy"), required = "required" })
+                        </span>
+                    </div>
+
+
+                    <div class="col-md-2">
+                        <label>Serial No</label>
+
+                    </div>
+
+                    <div class="col-md-2">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.TransNo, new { id = "TransNo", @class = "form-control" })
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Patient Type</label>
+
+                    </div>
+                    <div class="col-md-2">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientType, new { id = "PatientType", @class = "form-control", @readonly = "true", tabindex = "-1" })
+                        </span>
+                    </div>
+                </div>
+                <br />
+                <div class="row">
+
+
+                    <div class="col-md-2">
+                        <label>Patient ID</label>
+
+                    </div>
+                    <div class="col-md-2">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientyearId, new { id = "PatientyearId", @class = "form-control", @readonly = "true", tabindex = "-1" })
+                        </span>
+                    </div>
+
+                    @Html.TextBoxFor(model => model.INSLTUDE, new { id = "latlonPos", style = "display: none;" })
+                    <input id="lat" type="hidden" />
+                    <input id="lon" type="hidden" />
+                    <div class="col-md-2">
+                        <label>Patient Name</label>
+
+                    </div>
+                    <div class="col-md-6">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientName, new { id = "PatientName", @class = "form-control", @readonly = "true", tabindex = "-1" })
+                        </span>
+                    </div>
+
+
+                </div>
+                <br />
+                <div class="row">
+
+                    <div class="col-md-2">
+                        <label>Patient Year</label>
+
+                    </div>
+                    <div class="col-md-2">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.PatientYear, new { id = "PatientYear", @class = "form-control", @readonly = "true", tabindex = "-1" })
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Operation Head</label>
+
+                    </div>
+                    <div class="col-md-6">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.OpHeadName, new { id = "OpHeadName", @class = "form-control", @readonly = "true", tabindex = "-1" })
+                        </span>
+                    </div>
+
+
+                </div>
+                <br />
+                <div class="row">
+                    <div class="col-md-2">
+                        <label>Time From</label>
+
+                    </div>
+                    <div class="col-md-2">
+                        <div class="input-group clockpicker" data-align="top" data-autoclose="true">
+
+
+                            @Html.TextBoxFor(model => model.OPTMFR, htmlAttributes: new { id = "OPTMFR", @class = "form-control", @Value = "00:01" })
+                            <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-time"></span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Time To</label>
+
+                    </div>
+                    <div class="col-md-2">
+                        <div class="input-group clockpicker" data-align="top" data-autoclose="true">
+
+
+                            @Html.TextBoxFor(model => model.OPTMTO, htmlAttributes: new { id = "OPTMTO", @class = "form-control", @Value = "00:01" })
+
+                            <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-time"></span>
+                            </span>
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-2">
+                        <label>Remarks</label>
+
+                    </div>
+                    <div class="col-md-2">
+
+                        <span>
+                            @Html.TextBoxFor(model => model.REMARKS, new { id = "REMARKS", @class = "form-control" })
+                        </span>
+                    </div>
+
+
+                </div>
+
+
+                <br />
+                <div class="row">
+                    <div class="col-md-2">
+
+                        <input style="margin-top: 0px" type="submit" value="Update" data-ng-click="update($event)" class="btn btn-primary" />
+
+
+                    </div>
+                    <div class="col-md-2">
+
+                        <input style="margin-top: 0px" type="submit" value="Refresh" data-ng-click="refresh()" class="btn btn-primary" />
+
+
+                    </div>
+                </div>
+                <br />
+
+                <table class="table table-bordered table-hover col-md-12">
+
+                    <tr>
+
+                        <td class="col-md-2"><label>Type</label></td>
+
+                        <td class="col-md-2"><label>Head Particulars</label></td>
+                        <td class="col-md-2"><label>Amount</label></td>
+                        <td class="col-md-2"><label>Remarks</label></td>
+                        <td class="col-md-2"></td>
+
+
+                    </tr>
+                    <tr>
+                        @Html.HiddenFor(model => model.OTPID, new { data_ng_model = "newChild.OTPID", @class = "form-control", id = "OTPID" })
+
+                        <td class="col-md-2">
+                            @Html.DropDownListFor(model => model.OTPTP, listofOTPTP, new { data_ng_model = "newChild.OTPTP", @class = "form-control", id = "OTPTP" })
+                        </td>
+                        <td class="col-md-2">@Html.TextBoxFor(model => model.OTPName, new { data_ng_model = "newChild.OTPName", @class = "form-control", id = "OTPName" })</td>
+                        <td class="col-md-2">@Html.TextBoxFor(model => model.OTPAMT, new { data_ng_model = "newChild.OTPAMT", @class = "form-control", id = "OTPAMT" })</td>
+                        <td class="col-md-2">@Html.TextBoxFor(model => model.REMARKS, new { data_ng_model = "newChild.REMARKS", @class = "form-control", id = "REMARKS" })</td>
+
+                        <td class="col-md-2"><input type="submit" value="Insert" data-ng-click="addrow($event)" class="btn btn-primary" /></td>
+                    </tr>
+                    <tr data-ng-repeat="item in OTData">
+                        <td hidden><strong data-ng-hide="item.editMode">{{item.ID}}</strong></td>
+
+
+                        <td hidden><strong data-ng-hide="item.editMode">{{item.OTPID}}</strong></td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.OTPTP }}</p>
+                            @Html.DropDownListFor(model => model.OTPTP, listofOTPTP, new { data_ng_show = "item.editMode", data_ng_model = "item.OTPTP", @class = "form-control gridOTPTP" })
+
+                        </td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.OTPName }}</p>
+                            @Html.TextBoxFor(model => model.OTPName, new { data_ng_show = "item.editMode", data_ng_model = "item.OTPName", @class = "form-control gridOTPName", ng_change = "x(item.OTPName)" })
+
+                        </td>
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.OTPAMT }}</p>
+                            @Html.TextBoxFor(model => model.OTPAMT, new { data_ng_show = "item.editMode", data_ng_model = "item.OTPAMT", @class = "form-control", id = "gridOTPAMT" })
+
+                        </td>
+
+                        <td>
+                            <p data-ng-hide="item.editMode">{{ item.REMARKS }}</p>
+
+                            @Html.TextBoxFor(model => model.REMARKS, new { data_ng_show = "item.editMode", data_ng_model = "item.REMARKS", @class = "form-control", id = "gridREMARKS" })
+                        </td>
+
+
+
+                        <td>
+                            <p data-ng-hide="item.editMode"><a data-ng-click="toggleEdit(item)" href="javascript:;">Edit</a> | <a data-ng-click="deleteitem(item)" href="javascript:;">Delete</a></p>
+                            <p data-ng-show="item.editMode"><a data-ng-click="save(item)" href="javascript:;">Save</a> | <a data-ng-click="cancel()" href="javascript:;">Cancel</a></p>
+
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><b>Total:</b> </td>
+                        <td colspan="1"><p id="gridTotalamount">{{GetSummOfAmount(OTData)}}</p></td>
+                        <td colspan="1"></td>
+
+                    </tr>
+
+
+
+                </table>
+
+
+            </div>
+
+
+
+
+        </div>
+    </div>
+
+    //datatime picker script
+    <script type="text/javascript">
+        $('.clockpicker').clockpicker();
+    </script>
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false">
+    </script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlonPos").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+                $("#latlonRms").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+    </script>
+
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+
+            $('#TransactionDate').datepicker({
+                format: "dd-M-yyyy",
+                autoclose: true,
+                todayHighlight: true,
+                showOnFocus: true,
+            }).on('show', function (e) {
+                if (e.date) {
+                    $(this).data('stickyDate', e.date);
+                } else {
+                    $(this).data('stickyDate', null);
+
+                }
+            }).on('hide', function (e) {
+                var stickyDate = $(this).data('stickyDate');
+
+                if (!e.date && stickyDate) {
+                    $(this).datepicker('setDate', stickyDate);
+                    $(this).data('stickyDate', null);
+                }
+
+            });
+
+            $('#TransNo').autocomplete({
+                source: function (request, response) {
+                    var compid = $('#txtcompid').val();
+                    var transDate = $('#TransactionDate').val();
+                    var year = $('#TransYear').val();
+
+
+
+
+                    $.ajax({
+                        url: '/api/apiOTMaster/SerialNo',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, Compid: compid, Year: year, Date: transDate },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item,
+                                    value: item,
+
+
+                                };
+                            }));
+                        }
+                    });
+
+
+
+
+                },
+                select: function (event, ui) {
+                    $('#TransNo').val(ui.item.label);
+
+
+                    txtOneChanged4();
+
+                },
+                change: $('#TransNo').keyup(_.debounce(txtOneChanged4, 1000))
+            });
+
+            //$("#PatientYear").datepicker({
+            //    format: "yyyy", // Notice the Extra space at the beginning
+            //    viewMode: "years",
+            //    minViewMode: "years",
+            //    autoclose: true
+            //});
+            $('#PatientyearId').autocomplete({
+                source: function (request, response) {
+                    var compid = $('#txtcompid').val();
+                    var year = $('#PatientYear').val();
+
+
+                    var type = $('#PatientType').val();
+
+                    $.ajax({
+                        url: '/api/apiOTMaster/PatientYID',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: compid, Year: year, Type: type },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item,
+                                    value: item,
+
+
+                                };
+                            }));
+                        }
+                    });
+
+
+
+
+                },
+                select: function (event, ui) {
+                    $('#PatientyearId').val(ui.item.label);
+
+
+                    txtOneChanged();
+
+                },
+                change: $('#PatientyearId').keyup(_.debounce(txtOneChanged, 1000))
+            });
+            $('#PatientType').change(function () {
+                $("#PatientyearId").val("");
+                $("#PatientYear").val("");
+                $("#PatientName").val("");
+                document.getElementById('PatientYear').focus();
+            });
+
+
+            $('#OpHeadName').autocomplete({
+                source: function (request, response) {
+                    var compid = $('#txtcompid').val();
+                    //var year = $('#PatientYear').val();
+
+
+                    //var type = $('#PatientType').val();
+
+                    $.ajax({
+                        url: '/api/apiOTMaster/OpHeadName',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: compid },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item.Text,
+                                    value: item.Text,
+                                    id: item.Value
+
+
+                                };
+                            }));
+                        }
+                    });
+
+
+
+
+                },
+                select: function (event, ui) {
+                    $('#OpHeadName').val(ui.item.label);
+                    $('#OPHID').val(ui.item.id);
+
+
+                    txtOneChanged2();
+
+                },
+                change: $('#OpHeadName').keyup(_.debounce(txtOneChanged2, 1000))
+            });
+
+            $('#OTPName').autocomplete({
+                source: function (request, response) {
+                    var compid = $('#txtcompid').val();
+
+                    $.ajax({
+                        url: '/apiPatinetConsult/DoctorName',
+                        type: 'GET',
+                        cache: false,
+                        data: { query: request.term, query2: compid },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item[0].DoctorName,
+                                    value: item[0].DoctorName,
+                                    id: item[0].DoctorId
+
+                                };
+                            }));
+                        }
+                    });
+                },
+                select: function (event, ui) {
+                    $('#OTPName').val(ui.item.label);
+
+                    $('#OTPID').val(ui.item.id);
+                    txtOneChanged3();
+
+                },
+                change: $('#OTPName').keyup(_.debounce(txtOneChanged3, 1000))
+            });
+
+
+
+
+
+        });
+
+
+
+        function txtOneChanged() {
+
+
+            var changedText = $("#PatientyearId").val();
+            var changedText2 = $('#txtcompid').val();
+            var year = $('#PatientYear').val();
+
+            var type = $('#PatientType').val();
+
+            var txtBox = document.getElementById('PatientyearId');
+
+            var txtBox2 = document.getElementById('PatientName');
+
+            if (changedText != "") {
+
+                $.getJSON(
+             '/api/apiOTMaster/DynamicPatinetYearId', {
+                 "ChangedText": changedText, "ChangedText2": changedText2, "Year": year, "Type": type
+             },
+             function (result) {
+
+                 txtBox.value = result;
+
+
+
+             });
+                $.getJSON(
+                    '/api/OTMaster/PatientName', { "ChangedText": changedText, "ChangedText2": changedText2, "Type": type },
+                    function (result) {
+
+                        txtBox2.value = result;
+
+
+
+                    });
+
+
+            }
+
+
+
+        }
+
+        function txtOneChanged2() {
+
+
+            var changedText = $("#OpHeadName").val();
+            var changedText2 = $('#txtcompid').val();
+
+            var txtBox = document.getElementById('OpHeadName');
+
+            var txtBox2 = document.getElementById('OPHID');
+
+            if (changedText != "") {
+
+                $.getJSON(
+             '/api/OTMaster/DynamicOpHeadName', {
+                 "ChangedText": changedText, "ChangedText2": changedText2
+             },
+             function (result) {
+
+                 txtBox.value = result[0].Text;
+                 txtBox2.value = result[0].Value;
+
+
+
+             });
+
+
+
+            }
+
+
+
+        }
+
+        function txtOneChanged3() {
+
+
+            var changedText = $("#OTPName").val();
+            var changedText2 = $('#txtcompid').val();
+
+            var Name = document.getElementById('OTPName');
+            var txtBox = document.getElementById('OTPID');
+
+
+
+            if (changedText != "") {
+
+                $.getJSON(
+                    '/apiPatientConsult/DynamicDoctor', { "ChangedText": changedText, "ChangedText2": changedText2 },
+                    function (result) {
+                        Name.value = result[0].DoctorName,
+                               txtBox.value = result[0].DoctorId;
+
+
+
+
+
+
+                    });
+
+            }
+
+
+
+        }
+
+
+        function txtOneChanged4() {
+
+
+            var changedText = $("#TransNo").val();
+            var changedText2 = $('#txtcompid').val();
+            var changedText3 = $('#TransactionDate').val();
+            var changedText4 = $('#TransYear').val();
+
+            var txtBox = document.getElementById('TransNo');
+            var txtBox1 = document.getElementById('PatientType');
+
+            var txtBox2 = document.getElementById('PatientYear');
+            var txtBox3 = document.getElementById('PatientyearId');
+
+            var txtBox4 = document.getElementById('PatientName');
+            var txtBox5 = document.getElementById('OpHeadName');
+
+            var txtBox6 = document.getElementById('OPTMFR');
+            var txtBox7 = document.getElementById('OPTMTO');
+
+            var txtBox8 = document.getElementById('REMARKS');
+            var txtBox9 = document.getElementById('OPHID');
+
+            if (changedText != "") {
+
+                $.getJSON(
+             '/api/OTMaster/DynamicSerial', {
+                 "ChangedText": changedText, "ChangedText2": changedText2, "ChangedText3": changedText3, "ChangedText4": changedText4
+             },
+             function (result) {
+                 txtBox.value = result[0].TransNo;
+                 txtBox1.value = result[0].PatientType;
+                 txtBox2.value = result[0].PatientYear;
+                 txtBox3.value = result[0].PatientyearId;
+                 txtBox4.value = result[0].PatientName;
+                 txtBox5.value = result[0].OpHeadName;
+                 txtBox6.value = result[0].OPTMFR;
+                 txtBox7.value = result[0].OPTMTO;
+                 txtBox8.value = result[0].REMARKS;
+                 txtBox9.value = result[0].OPHID;
+
+
+             });
+
+
+
+            }
+
+
+
+        }
+
+
+    </script>
+
+
+}
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+
+<script src="~/Scripts/bootstrap-datepicker.js"></script>
+
+
+
+<script src="~/Scripts/angularjs/1.0.5/angular.js"></script>
+
+<script src="~/Scripts/OT/OTMaster2.js"></script>
+
+<script src="~/Scripts/angularjs/ui-bootstrap-tpls-0.4.0.js"></script>
+
+
+
+
+<script src="~/Scripts/Underscore.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
